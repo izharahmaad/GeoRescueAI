@@ -1,0 +1,30 @@
+data:
+  root: data
+  train_dir: synthetic/train
+  val_dir: synthetic/val
+  test_dir: synthetic/test
+  optical_channels: 3
+  sar_channels: 1
+  num_classes: 2
+  image_size: 128
+
+model:
+  name: fusion_unet
+  base_channels: 16
+  dropout: 0.05
+
+training:
+  seed: 42
+  epochs: 5
+  batch_size: 4
+  num_workers: 0
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  amp: true
+  device: auto
+  checkpoint_dir: outputs/checkpoints
+  best_checkpoint_name: best_model.pt
+
+evaluation:
+  threshold: 0.5
+  ignore_index: -1

@@ -1,0 +1,4 @@
+This project source code is provided for research and educational use.
+Before distributing or publishing any dataset-derived content, verify and comply
+with the dataset's official license and terms. No satellite dataset is included
+in this repository.

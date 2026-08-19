@@ -1,0 +1,14 @@
+numpy>=2.0,<3
+PyYAML>=6.0,<7
+Pillow>=10.0,<12
+scikit-learn>=1.5,<2
+# Install a CUDA-specific PyTorch build from pytorch.org when GPU support is desired.
+torch>=2.4,<3
+torchvision>=0.19,<1
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.9,<1
+pytest>=8.0,<9
+httpx>=0.27,<1
+ruff>=0.8,<1
+mypy>=1.13,<2

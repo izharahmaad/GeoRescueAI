@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GeoRescue AI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    section { border: 1px solid #ddd; border-radius: 12px; padding: 20px; margin-top: 20px; }
+    label { display: block; margin: 12px 0 6px; font-weight: 600; }
+    button { margin-top: 18px; padding: 10px 16px; cursor: pointer; }
+    img { max-width: 100%; margin-top: 20px; image-rendering: pixelated; }
+    .status { padding: 10px; border-radius: 8px; background: #f4f4f4; }
+  </style>
+</head>
+<body>
+  <h1>GeoRescue AI</h1>
+  <p>Multimodal disaster damage segmentation prototype.</p>
+  <section>
+    <div id="health" class="status">Checking API health…</div>
+    <form id="form">
+      <label for="optical">Pre-disaster optical RGB image</label>
+      <input id="optical" type="file" accept="image/*" required />
+      <label for="sar">Post-disaster SAR image</label>
+      <input id="sar" type="file" accept="image/*" required />
+      <button type="submit">Run Segmentation</button>
+    </form>
+    <p id="message"></p>
+    <img id="result" alt="Prediction mask" hidden />
+  </section>
+  <script>
+    fetch('/health').then(r => r.json()).then(data => {
+      document.getElementById('health').textContent = `API: ${data.status} | device: ${data.device} | checkpoint: ${data.checkpoint_exists}`;
+    }).catch(() => document.getElementById('health').textContent = 'API health check failed');
+
+    document.getElementById('form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData();
+      formData.append('optical', document.getElementById('optical').files[0]);
+      formData.append('sar', document.getElementById('sar').files[0]);
+      document.getElementById('message').textContent = 'Running inference…';
+      const response = await fetch('/predict', { method: 'POST', body: formData });
+      if (!response.ok) {
+        document.getElementById('message').textContent = await response.text();
+        return;
+      }
+      const blob = await response.blob();
+      document.getElementById('result').src = URL.createObjectURL(blob);
+      document.getElementById('result').hidden = false;
+      document.getElementById('message').textContent = 'Prediction complete.';
+    });
+  </script>
+</body>
+</html>
