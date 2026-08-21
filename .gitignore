@@ -1,16 +1,32 @@
+# Python virtual environment
 .venv/
+
+# Python cache / bytecode
 __pycache__/
 *.py[cod]
+
+# Test / tooling caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# IDE / editor
 .vscode/
+
+# Environment / secrets
 .env
+
+# OS files
 .DS_Store
+
+# Python packaging metadata
+*.egg-info/
 
 # Large/raw research data
 data/raw/**
 data/processed/**
+
+# Keep directory placeholders
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
@@ -20,4 +36,6 @@ outputs/checkpoints/*
 outputs/predictions/*
 outputs/figures/*
 outputs/experiments/*
+
+# Keep directory placeholders
 !outputs/**/.gitkeep
