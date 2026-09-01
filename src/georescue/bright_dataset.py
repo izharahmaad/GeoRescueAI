@@ -151,8 +151,9 @@ def validate_sample_geometry(
 ) -> None:
     """Validate dimensions, CRS, transform, and spatial extent.
 
-    Raster transforms and bounds are floating-point geospatial metadata,
-    so they are compared with a small tolerance instead of exact equality.
+    Raster transforms and bounds contain floating-point geospatial
+    values, so transform and bounds comparisons use a small absolute
+    tolerance rather than exact equality.
     """
 
     paths = {
@@ -181,6 +182,7 @@ def validate_sample_geometry(
     for name in ("sar", "target"):
         current = metadata[name]
 
+        # Pixel dimensions must match exactly.
         if (
             current["width"] != reference["width"]
             or current["height"] != reference["height"]
@@ -189,6 +191,7 @@ def validate_sample_geometry(
                 f"Dimension mismatch: optical vs {name}"
             )
 
+        # Coordinate reference systems must match exactly.
         if current["crs"] != reference["crs"]:
             raise BrightDatasetError(
                 f"CRS mismatch: optical vs {name}"
@@ -199,10 +202,12 @@ def validate_sample_geometry(
             dtype=np.float64,
         )
 
+        # Use absolute tolerance only. Relative tolerance is disabled
+        # because UTM coordinate magnitudes are large.
         if not np.allclose(
             current_transform,
             reference_transform,
-            rtol=1e-9,
+            rtol=0.0,
             atol=1e-9,
         ):
             raise BrightDatasetError(
@@ -217,7 +222,7 @@ def validate_sample_geometry(
         if not np.allclose(
             current_bounds,
             reference_bounds,
-            rtol=1e-9,
+            rtol=0.0,
             atol=1e-6,
         ):
             raise BrightDatasetError(

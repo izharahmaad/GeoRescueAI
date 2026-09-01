@@ -1,0 +1,28 @@
+project:
+  name: GeoRescueAI-BRIGHT
+  seed: 42
+
+data:
+  root: data/raw/BRIGHT
+  image_size: 640
+  optical_channels: 3
+  sar_channels: 3
+  num_classes: 4
+
+model:
+  name: fusion_unet
+  base_channels: 32
+  dropout: 0.1
+
+training:
+  device: auto
+  batch_size: 1
+  epochs: 1
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  num_workers: 0
+
+experiment:
+  dataset: BRIGHT
+  mode: standard_ml
+  task: damage_segmentation
