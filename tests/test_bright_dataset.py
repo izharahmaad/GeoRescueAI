@@ -251,3 +251,181 @@ def test_bright_training_crop(
     assert mask.dtype == torch.int64
 
     assert returned_id == sample_id
+
+
+def test_bright_split_file_preserves_split_order(
+    tmp_path: Path,
+) -> None:
+    """A split file should select only requested IDs and preserve order."""
+    root = tmp_path / "BRIGHT"
+
+    pre_event = root / "pre-event"
+    post_event = root / "post-event"
+    target = root / "target"
+
+    pre_event.mkdir(parents=True)
+    post_event.mkdir()
+    target.mkdir()
+
+    sample_ids = [
+        "sample_00000000",
+        "sample_00000001",
+        "sample_00000002",
+    ]
+
+    for sample_id in sample_ids:
+        _create_raster(
+            pre_event / f"{sample_id}_pre_disaster.tif",
+            np.zeros(
+                (3, 8, 8),
+                dtype=np.uint8,
+            ),
+        )
+
+        _create_raster(
+            post_event / f"{sample_id}_post_disaster.tif",
+            np.zeros(
+                (1, 8, 8),
+                dtype=np.uint8,
+            ),
+        )
+
+        _create_raster(
+            target / f"{sample_id}_building_damage.tif",
+            np.zeros(
+                (8, 8),
+                dtype=np.uint8,
+            ),
+        )
+
+    split_file = tmp_path / "train_set.txt"
+
+    split_file.write_text(
+        "sample_00000002\n"
+        "sample_00000000\n"
+        "sample_00000001\n",
+        encoding="utf-8",
+    )
+
+    samples = discover_bright_samples(
+        root,
+        split_file=split_file,
+    )
+
+    assert [
+        sample.sample_id
+        for sample in samples
+    ] == [
+        "sample_00000002",
+        "sample_00000000",
+        "sample_00000001",
+    ]
+
+
+def test_bright_split_file_rejects_missing_sample(
+    tmp_path: Path,
+) -> None:
+    """A split ID missing from the dataset should fail clearly."""
+    root = tmp_path / "BRIGHT"
+
+    pre_event = root / "pre-event"
+    post_event = root / "post-event"
+    target = root / "target"
+
+    pre_event.mkdir(parents=True)
+    post_event.mkdir()
+    target.mkdir()
+
+    sample_id = "sample_00000000"
+
+    _create_raster(
+        pre_event / f"{sample_id}_pre_disaster.tif",
+        np.zeros(
+            (3, 8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    _create_raster(
+        post_event / f"{sample_id}_post_disaster.tif",
+        np.zeros(
+            (1, 8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    _create_raster(
+        target / f"{sample_id}_building_damage.tif",
+        np.zeros(
+            (8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    split_file = tmp_path / "train_set.txt"
+
+    split_file.write_text(
+        "sample_00000099\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BrightDatasetError):
+        discover_bright_samples(
+            root,
+            split_file=split_file,
+        )
+
+
+def test_bright_split_file_rejects_duplicate_ids(
+    tmp_path: Path,
+) -> None:
+    """Duplicate IDs in an official split should fail clearly."""
+    root = tmp_path / "BRIGHT"
+
+    pre_event = root / "pre-event"
+    post_event = root / "post-event"
+    target = root / "target"
+
+    pre_event.mkdir(parents=True)
+    post_event.mkdir()
+    target.mkdir()
+
+    sample_id = "sample_00000000"
+
+    _create_raster(
+        pre_event / f"{sample_id}_pre_disaster.tif",
+        np.zeros(
+            (3, 8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    _create_raster(
+        post_event / f"{sample_id}_post_disaster.tif",
+        np.zeros(
+            (1, 8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    _create_raster(
+        target / f"{sample_id}_building_damage.tif",
+        np.zeros(
+            (8, 8),
+            dtype=np.uint8,
+        ),
+    )
+
+    split_file = tmp_path / "train_set.txt"
+
+    split_file.write_text(
+        f"{sample_id}\n"
+        f"{sample_id}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BrightDatasetError):
+        discover_bright_samples(
+            root,
+            split_file=split_file,
+        )

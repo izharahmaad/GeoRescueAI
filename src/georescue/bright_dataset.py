@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
@@ -50,10 +51,71 @@ def _index_files(
     return index
 
 
+def _read_split_ids(
+    split_file: str | Path,
+) -> list[str]:
+    """Read sample IDs from an official BRIGHT split file."""
+
+    split_path = Path(split_file)
+
+    if not split_path.is_file():
+        raise BrightDatasetError(
+            f"BRIGHT split file does not exist: {split_path}"
+        )
+
+    try:
+        lines = split_path.read_text(
+            encoding="utf-8"
+        ).splitlines()
+    except OSError as exc:
+        raise BrightDatasetError(
+            f"Unable to read BRIGHT split file: {split_path}"
+        ) from exc
+
+    split_ids = [
+        line.strip()
+        for line in lines
+        if line.strip()
+    ]
+
+    if not split_ids:
+        raise BrightDatasetError(
+            f"BRIGHT split file is empty: {split_path}"
+        )
+
+    counts = Counter(split_ids)
+
+    duplicate_ids = sorted(
+        sample_id
+        for sample_id, count in counts.items()
+        if count > 1
+    )
+
+    if duplicate_ids:
+        preview = duplicate_ids[:10]
+
+        message = (
+            "Duplicate sample IDs found in split file: "
+            f"{preview}"
+        )
+
+        if len(duplicate_ids) > 10:
+            message += " ..."
+
+        raise BrightDatasetError(message)
+
+    return split_ids
+
+
 def discover_bright_samples(
     root: str | Path,
+    split_file: str | Path | None = None,
 ) -> list[BrightSample]:
-    """Discover all fully matched BRIGHT samples."""
+    """Discover matched BRIGHT samples.
+
+    When ``split_file`` is provided, only IDs listed in that
+    official split file are returned, preserving the split-file order.
+    """
 
     root = Path(root)
 
@@ -61,7 +123,13 @@ def discover_bright_samples(
     post_event = root / "post-event"
     target = root / "target"
 
-    for directory in (pre_event, post_event, target):
+    required_directories = (
+        pre_event,
+        post_event,
+        target,
+    )
+
+    for directory in required_directories:
         if not directory.is_dir():
             raise BrightDatasetError(
                 f"Missing required BRIGHT directory: {directory}"
@@ -82,7 +150,7 @@ def discover_bright_samples(
         "_building_damage.tif",
     )
 
-    common_ids = sorted(
+    common_ids = (
         set(optical)
         & set(sar)
         & set(targets)
@@ -93,6 +161,33 @@ def discover_bright_samples(
             "No matched BRIGHT optical/SAR/target samples found."
         )
 
+    if split_file is None:
+        selected_ids = sorted(common_ids)
+
+    else:
+        split_ids = _read_split_ids(
+            split_file
+        )
+
+        missing_ids = sorted(
+            set(split_ids) - common_ids
+        )
+
+        if missing_ids:
+            preview = missing_ids[:10]
+
+            message = (
+                "Split file contains IDs that are not fully matched "
+                f"in the BRIGHT dataset: {preview}"
+            )
+
+            if len(missing_ids) > 10:
+                message += " ..."
+
+            raise BrightDatasetError(message)
+
+        selected_ids = split_ids
+
     return [
         BrightSample(
             sample_id=sample_id,
@@ -100,7 +195,7 @@ def discover_bright_samples(
             sar_path=sar[sample_id],
             target_path=targets[sample_id],
         )
-        for sample_id in common_ids
+        for sample_id in selected_ids
     ]
 
 
@@ -151,9 +246,8 @@ def validate_sample_geometry(
 ) -> None:
     """Validate dimensions, CRS, transform, and spatial extent.
 
-    Raster transforms and bounds contain floating-point geospatial
-    values, so transform and bounds comparisons use a small absolute
-    tolerance rather than exact equality.
+    Transform and bounds are compared with small absolute tolerances
+    because GeoTIFF geospatial metadata uses floating-point values.
     """
 
     paths = {
@@ -202,8 +296,9 @@ def validate_sample_geometry(
             dtype=np.float64,
         )
 
-        # Use absolute tolerance only. Relative tolerance is disabled
-        # because UTM coordinate magnitudes are large.
+        # Disable relative tolerance because CRS coordinate values
+        # can be very large. Only absolute floating-point tolerance
+        # is appropriate here.
         if not np.allclose(
             current_transform,
             reference_transform,
@@ -233,7 +328,7 @@ def validate_sample_geometry(
 class BrightSegmentationDataset(Dataset):
     """PyTorch dataset for BRIGHT multimodal damage segmentation.
 
-    Each sample is represented as:
+    Each sample returns:
 
         input:
             6-channel tensor [6, H, W]
@@ -241,7 +336,10 @@ class BrightSegmentationDataset(Dataset):
         target:
             integer mask [H, W]
 
-    The six input channels are:
+        sample_id:
+            BRIGHT sample identifier
+
+    Channels:
 
         0-2: pre-event optical RGB
         3-5: post-event SAR replicated across three channels
@@ -251,6 +349,7 @@ class BrightSegmentationDataset(Dataset):
         self,
         root: str | Path,
         samples: list[BrightSample] | None = None,
+        split_file: str | Path | None = None,
         crop_size: int | None = 640,
         training: bool = True,
     ) -> None:
@@ -258,11 +357,19 @@ class BrightSegmentationDataset(Dataset):
         self.crop_size = crop_size
         self.training = training
 
-        self.samples = (
-            samples
-            if samples is not None
-            else discover_bright_samples(self.root)
-        )
+        if samples is not None and split_file is not None:
+            raise ValueError(
+                "Provide either samples or split_file, not both."
+            )
+
+        if samples is not None:
+            self.samples = list(samples)
+
+        else:
+            self.samples = discover_bright_samples(
+                self.root,
+                split_file=split_file,
+            )
 
         if not self.samples:
             raise BrightDatasetError(
@@ -507,8 +614,8 @@ class BrightSegmentationDataset(Dataset):
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Apply synchronized spatial augmentations.
 
-        All operations explicitly return contiguous arrays so that
-        they are always safe to convert to PyTorch tensors.
+        Every operation returns contiguous arrays so they can safely
+        be converted into PyTorch tensors.
         """
 
         # Horizontal flip.
@@ -624,7 +731,9 @@ class BrightSegmentationDataset(Dataset):
             axis=0,
         )
 
-        sar = np.ascontiguousarray(sar)
+        sar = np.ascontiguousarray(
+            sar
+        )
 
         # Apply official normalization.
         optical = self._normalize_modality(
@@ -676,7 +785,11 @@ class BrightSegmentationDataset(Dataset):
 
 def iter_bright_samples(
     root: str | Path,
+    split_file: str | Path | None = None,
 ) -> Iterator[BrightSample]:
-    """Yield BRIGHT samples one at a time."""
+    """Yield BRIGHT samples, optionally restricted to a split file."""
 
-    yield from discover_bright_samples(root)
+    yield from discover_bright_samples(
+        root,
+        split_file=split_file,
+    )
