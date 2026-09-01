@@ -110,11 +110,27 @@ def _read_split_ids(
 def discover_bright_samples(
     root: str | Path,
     split_file: str | Path | None = None,
+    strict_split: bool = True,
 ) -> list[BrightSample]:
     """Discover matched BRIGHT samples.
 
-    When ``split_file`` is provided, only IDs listed in that
-    official split file are returned, preserving the split-file order.
+    Args:
+        root:
+            BRIGHT dataset root containing:
+            ``pre-event``, ``post-event``, and ``target``.
+
+        split_file:
+            Optional official BRIGHT split file.
+
+        strict_split:
+            When True, every ID listed in ``split_file`` must exist
+            locally as a fully matched optical/SAR/target sample.
+
+            When False, only IDs that are actually available locally
+            are returned, preserving the official split-file order.
+
+    Returns:
+        A list of matched BRIGHT samples.
     """
 
     root = Path(root)
@@ -169,11 +185,13 @@ def discover_bright_samples(
             split_file
         )
 
-        missing_ids = sorted(
-            set(split_ids) - common_ids
-        )
+        missing_ids = [
+            sample_id
+            for sample_id in split_ids
+            if sample_id not in common_ids
+        ]
 
-        if missing_ids:
+        if strict_split and missing_ids:
             preview = missing_ids[:10]
 
             message = (
@@ -186,7 +204,19 @@ def discover_bright_samples(
 
             raise BrightDatasetError(message)
 
-        selected_ids = split_ids
+        # In non-strict development mode, use only samples that
+        # physically exist while preserving official split order.
+        selected_ids = [
+            sample_id
+            for sample_id in split_ids
+            if sample_id in common_ids
+        ]
+
+        if not selected_ids:
+            raise BrightDatasetError(
+                "None of the IDs in the requested BRIGHT split "
+                "are available as fully matched local samples."
+            )
 
     return [
         BrightSample(
@@ -296,9 +326,9 @@ def validate_sample_geometry(
             dtype=np.float64,
         )
 
-        # Disable relative tolerance because CRS coordinate values
-        # can be very large. Only absolute floating-point tolerance
-        # is appropriate here.
+        # Only absolute tolerance is used because projected coordinate
+        # values can be large. The BRIGHT sample only differed by
+        # approximately 3e-13 in the transform coefficients.
         if not np.allclose(
             current_transform,
             reference_transform,
@@ -350,12 +380,14 @@ class BrightSegmentationDataset(Dataset):
         root: str | Path,
         samples: list[BrightSample] | None = None,
         split_file: str | Path | None = None,
+        strict_split: bool = True,
         crop_size: int | None = 640,
         training: bool = True,
     ) -> None:
         self.root = Path(root)
         self.crop_size = crop_size
         self.training = training
+        self.strict_split = strict_split
 
         if samples is not None and split_file is not None:
             raise ValueError(
@@ -369,6 +401,7 @@ class BrightSegmentationDataset(Dataset):
             self.samples = discover_bright_samples(
                 self.root,
                 split_file=split_file,
+                strict_split=strict_split,
             )
 
         if not self.samples:
@@ -615,7 +648,7 @@ class BrightSegmentationDataset(Dataset):
         """Apply synchronized spatial augmentations.
 
         Every operation returns contiguous arrays so they can safely
-        be converted into PyTorch tensors.
+        be converted to PyTorch tensors.
         """
 
         # Horizontal flip.
@@ -786,10 +819,12 @@ class BrightSegmentationDataset(Dataset):
 def iter_bright_samples(
     root: str | Path,
     split_file: str | Path | None = None,
+    strict_split: bool = True,
 ) -> Iterator[BrightSample]:
     """Yield BRIGHT samples, optionally restricted to a split file."""
 
     yield from discover_bright_samples(
         root,
         split_file=split_file,
+        strict_split=strict_split,
     )
