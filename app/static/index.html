@@ -2,53 +2,5138 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GeoRescue AI</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+
+  <meta
+    name="description"
+    content="GeoRescue AI multimodal disaster damage assessment console."
+  />
+
+  <title>GeoRescue AI — Analysis Console</title>
+
+  <!-- ==========================================================
+       TYPOGRAPHY
+       ========================================================== -->
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  />
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
-    section { border: 1px solid #ddd; border-radius: 12px; padding: 20px; margin-top: 20px; }
-    label { display: block; margin: 12px 0 6px; font-weight: 600; }
-    button { margin-top: 18px; padding: 10px 16px; cursor: pointer; }
-    img { max-width: 100%; margin-top: 20px; image-rendering: pixelated; }
-    .status { padding: 10px; border-radius: 8px; background: #f4f4f4; }
+    /* ============================================================
+       DESIGN TOKENS
+       ============================================================ */
+
+    :root {
+      --bg: #080f1b;
+      --top: #0a1220;
+      --side: #0c1625;
+      --workspace: #09121f;
+      --intel: #0c1626;
+
+      --panel: #101a2b;
+      --panel-soft: #121e31;
+
+      --line: rgba(162, 183, 207, 0.11);
+      --line-strong: rgba(162, 183, 207, 0.2);
+
+      --text: #edf3f8;
+      --text-soft: #b7c3d0;
+      --text-muted: #7e8b9d;
+      --text-dim: #596679;
+
+      --green: #49ddb1;
+      --green-dark: #20b98b;
+      --green-soft: rgba(73, 221, 177, 0.08);
+      --green-border: rgba(73, 221, 177, 0.24);
+
+      --cyan: #65d7fa;
+      --blue: #91acff;
+      --yellow: #e4bf70;
+      --red: #ff7d7d;
+
+      --radius: 7px;
+      --radius-small: 4px;
+
+      --top-height: 70px;
+      --sidebar-width: 230px;
+      --intel-width: 360px;
+    }
+
+    /* ============================================================
+       BASE
+       ============================================================ */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+
+      background: var(--bg);
+      color: var(--text);
+
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    img {
+      display: block;
+    }
+
+    .mono {
+      font-family:
+        "IBM Plex Mono",
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ============================================================
+       SVG ICONS
+       ============================================================ */
+
+    .icon {
+      width: 17px;
+      height: 17px;
+
+      display: block;
+
+      fill: none;
+      stroke: currentColor;
+
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-small {
+      width: 14px;
+      height: 14px;
+    }
+
+    .icon-tiny {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* ============================================================
+       APPLICATION SHELL
+       ============================================================ */
+
+    .app {
+      width: 100vw;
+      height: 100vh;
+
+      display: grid;
+
+      grid-template:
+        "top top top" var(--top-height)
+        "side workspace intel" minmax(0, 1fr)
+        / var(--sidebar-width) minmax(0, 1fr) var(--intel-width);
+
+      background: var(--bg);
+    }
+
+    /* ============================================================
+       TOP BAR
+       ============================================================ */
+
+    .topbar {
+      grid-area: top;
+
+      min-width: 0;
+
+      display: flex;
+      align-items: stretch;
+
+      background: var(--top);
+
+      border-bottom:
+        1px solid var(--line);
+
+      z-index: 100;
+    }
+
+    .brand-area {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+
+      display: flex;
+      align-items: center;
+
+      padding:
+        0 21px;
+
+      border-right:
+        1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /*
+      Proper circular satellite logo.
+      Three circular/orbital layers make the mark
+      visually read as a satellite/geospatial logo.
+    */
+
+    .brand-mark {
+      position: relative;
+
+      width: 34px;
+      height: 34px;
+
+      flex: 0 0 34px;
+
+      display: grid;
+      place-items: center;
+
+      border:
+        1px solid
+        var(--green-border);
+
+      border-radius: 50%;
+
+      background:
+        radial-gradient(
+          circle,
+          rgba(73, 221, 177, 0.12),
+          rgba(73, 221, 177, 0.025)
+        );
+
+      color: var(--green);
+    }
+
+    .brand-mark::before {
+      content: "";
+
+      position: absolute;
+
+      inset: 5px;
+
+      border:
+        1px solid
+        rgba(73, 221, 177, 0.34);
+
+      border-radius: 50%;
+    }
+
+    .brand-mark::after {
+      content: "";
+
+      position: absolute;
+
+      width: 24px;
+      height: 9px;
+
+      border:
+        1px solid
+        rgba(73, 221, 177, 0.28);
+
+      border-radius: 50%;
+
+      transform: rotate(-32deg);
+    }
+
+    .brand-mark svg {
+      position: relative;
+      z-index: 2;
+
+      width: 15px;
+      height: 15px;
+    }
+
+    .brand-text {
+      min-width: 0;
+    }
+
+    .brand-name {
+      color: var(--green);
+
+      font-size: 17px;
+      font-weight: 800;
+
+      line-height: 1;
+      letter-spacing: -0.045em;
+
+      white-space: nowrap;
+    }
+
+    .brand-caption {
+      margin-top: 4px;
+
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 600;
+
+      letter-spacing: 0.09em;
+
+      text-transform: uppercase;
+    }
+
+    .top-main {
+      min-width: 0;
+      flex: 1;
+
+      display: flex;
+      align-items: center;
+
+      padding:
+        0 18px;
+
+      gap: 21px;
+    }
+
+    .mission {
+      min-width: 0;
+
+      display: flex;
+      align-items: center;
+
+      gap: 17px;
+    }
+
+    .mission-info {
+      min-width: 0;
+    }
+
+    .mission-label {
+      color: var(--text-dim);
+
+      margin-bottom: 4px;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.12em;
+
+      text-transform: uppercase;
+    }
+
+    .mission-id {
+      max-width: 350px;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .telemetry {
+      height: 27px;
+
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+
+      padding:
+        0 10px;
+
+      border:
+        1px solid
+        var(--green-border);
+
+      border-radius: 999px;
+
+      background:
+        rgba(
+          73,
+          221,
+          177,
+          0.045
+        );
+
+      color: var(--green);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.05em;
+
+      text-transform: uppercase;
+    }
+
+    .telemetry-dot {
+      width: 6px;
+      height: 6px;
+
+      border-radius: 50%;
+
+      background: var(--green);
+
+      box-shadow:
+        0 0 0 3px
+        rgba(
+          73,
+          221,
+          177,
+          0.07
+        );
+    }
+
+    .telemetry-dot.offline {
+      background: var(--red);
+
+      box-shadow:
+        0 0 0 3px
+        rgba(
+          255,
+          125,
+          125,
+          0.07
+        );
+    }
+
+    .top-tabs {
+      height: 100%;
+
+      margin-left: auto;
+
+      display: flex;
+      align-items: stretch;
+    }
+
+    .top-tab {
+      position: relative;
+
+      min-width: 76px;
+
+      padding:
+        0 13px;
+
+      background: transparent;
+
+      color: var(--text-muted);
+
+      cursor: pointer;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 8px;
+      font-weight: 700;
+
+      letter-spacing: 0.055em;
+
+      text-transform: uppercase;
+    }
+
+    .top-tab:hover {
+      color: var(--text);
+    }
+
+    .top-tab.active {
+      color: var(--green);
+    }
+
+    .top-tab.active::after {
+      content: "";
+
+      position: absolute;
+
+      left: 13px;
+      right: 13px;
+      bottom: 0;
+
+      height: 2px;
+
+      background: var(--green);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+
+      gap: 3px;
+    }
+
+    .top-action {
+      width: 33px;
+      height: 33px;
+
+      display: grid;
+      place-items: center;
+
+      border-radius: 6px;
+
+      background: transparent;
+
+      color: var(--text-muted);
+
+      cursor: pointer;
+    }
+
+    .top-action:hover {
+      color: var(--text);
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.035
+        );
+    }
+
+    /* ============================================================
+       SIDEBAR
+       ============================================================ */
+
+    .sidebar {
+      grid-area: side;
+
+      min-height: 0;
+
+      display: flex;
+      flex-direction: column;
+
+      background: var(--side);
+
+      border-right:
+        1px solid var(--line);
+    }
+
+    .pipeline {
+      padding:
+        22px 22px 19px;
+
+      border-bottom:
+        1px solid var(--line);
+    }
+
+    .pipeline-label {
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 8px;
+      font-weight: 700;
+
+      letter-spacing: 0.13em;
+
+      text-transform: uppercase;
+    }
+
+    .pipeline-name {
+      margin-top: 7px;
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      padding:
+        14px 0;
+    }
+
+    .sidebar-label {
+      padding:
+        7px 22px 9px;
+
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.12em;
+
+      text-transform: uppercase;
+    }
+
+    .side-item {
+      width: 100%;
+
+      min-height: 46px;
+
+      display: flex;
+      align-items: center;
+
+      gap: 12px;
+
+      padding:
+        0 22px;
+
+      border-right:
+        2px solid
+        transparent;
+
+      background: transparent;
+
+      color: var(--text-soft);
+
+      cursor: pointer;
+
+      text-align: left;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 9px;
+      font-weight: 600;
+
+      transition:
+        color 0.15s ease,
+        background 0.15s ease;
+    }
+
+    .side-item:hover {
+      color: var(--text);
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.022
+        );
+    }
+
+    .side-item.active {
+      color: var(--green);
+
+      border-right-color:
+        var(--green);
+
+      background:
+        linear-gradient(
+          90deg,
+          rgba(
+            73,
+            221,
+            177,
+            0.105
+          ),
+          rgba(
+            73,
+            221,
+            177,
+            0.018
+          )
+        );
+    }
+
+    .side-icon {
+      width: 18px;
+      height: 18px;
+
+      flex: 0 0 18px;
+
+      display: grid;
+      place-items: center;
+
+      color: currentColor;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+
+      padding:
+        15px 17px 17px;
+
+      border-top:
+        1px solid var(--line);
+    }
+
+    .run-command {
+      width: 100%;
+
+      min-height: 43px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      gap: 8px;
+
+      border-radius: 4px;
+
+      background: var(--green);
+
+      color: #06130e;
+
+      cursor: pointer;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 8px;
+      font-weight: 800;
+
+      letter-spacing: 0.06em;
+
+      text-transform: uppercase;
+    }
+
+    .run-command:hover {
+      background:
+        #64e7bb;
+    }
+
+    .run-command:disabled {
+      cursor: wait;
+      opacity: 0.5;
+    }
+
+    .sidebar-state {
+      margin-top: 15px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+    }
+
+    .system-state {
+      display: flex;
+      align-items: center;
+
+      gap: 7px;
+
+      color: var(--green);
+    }
+
+    .state-indicator {
+      width: 7px;
+      height: 7px;
+
+      border-radius: 50%;
+
+      background: var(--green);
+    }
+
+    .state-indicator.offline {
+      background: var(--red);
+    }
+
+    .connection-state {
+      color: var(--text-dim);
+    }
+
+    /* ============================================================
+       CENTRAL WORKSPACE
+       ============================================================ */
+
+    .workspace {
+      grid-area: workspace;
+
+      min-width: 0;
+      min-height: 0;
+
+      display: flex;
+      flex-direction: column;
+
+      background: var(--workspace);
+    }
+
+    .workspace-header {
+      min-height: 70px;
+
+      padding:
+        16px 17px 13px;
+
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+
+      border-bottom:
+        1px solid var(--line);
+    }
+
+    .workspace-heading {
+      min-width: 0;
+    }
+
+    .workspace-kicker {
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.12em;
+
+      text-transform: uppercase;
+    }
+
+    .workspace-title {
+      margin-top: 4px;
+
+      color: var(--text);
+
+      font-size: 15px;
+      font-weight: 750;
+
+      letter-spacing: -0.025em;
+    }
+
+    .workspace-subtitle {
+      margin-top: 3px;
+
+      color: var(--text-muted);
+
+      font-size: 9px;
+    }
+
+    .workspace-tools {
+      display: flex;
+      align-items: center;
+
+      gap: 5px;
+    }
+
+    .tool {
+      height: 28px;
+
+      padding:
+        0 9px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 4px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.014
+        );
+
+      color: var(--text-muted);
+
+      cursor: pointer;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+    }
+
+    .tool:hover,
+    .tool.active {
+      color: var(--green);
+
+      border-color:
+        var(--green-border);
+
+      background:
+        var(--green-soft);
+    }
+
+    /* ============================================================
+       IMAGERY AREA
+       ============================================================ */
+
+    .imagery-stage {
+      flex: 1;
+
+      min-height: 0;
+
+      padding: 7px;
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(0, 1fr)
+        );
+
+      gap: 5px;
+    }
+
+    .imagery-panel {
+      position: relative;
+
+      min-width: 0;
+      min-height: 0;
+
+      overflow: hidden;
+
+      border:
+        1px solid
+        var(--line-strong);
+
+      background:
+        #070e18;
+
+      cursor: pointer;
+    }
+
+    .imagery-panel.selected {
+      border-color:
+        rgba(
+          73,
+          221,
+          177,
+          0.63
+        );
+
+      box-shadow:
+        inset 0 0 0 1px
+        rgba(
+          73,
+          221,
+          177,
+          0.09
+        );
+    }
+
+    .imagery-panel img {
+      width: 100%;
+      height: 100%;
+
+      object-fit: contain;
+
+      background:
+        radial-gradient(
+          circle at center,
+          #182535,
+          #070d16 77%
+        );
+
+      transition:
+        transform 0.2s ease;
+    }
+
+    .imagery-panel.zoomed img {
+      transform: scale(1.18);
+    }
+
+    .imagery-header {
+      position: absolute;
+
+      top: 10px;
+      left: 10px;
+
+      z-index: 5;
+
+      display: flex;
+      align-items: center;
+
+      gap: 7px;
+
+      padding:
+        7px 9px;
+
+      border:
+        1px solid
+        rgba(
+          174,
+          196,
+          218,
+          0.15
+        );
+
+      border-radius: 4px;
+
+      background:
+        rgba(
+          7,
+          13,
+          23,
+          0.9
+        );
+
+      backdrop-filter:
+        blur(7px);
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.045em;
+
+      text-transform: uppercase;
+    }
+
+    .imagery-header.green {
+      color: var(--green);
+    }
+
+    .imagery-header.blue {
+      color: var(--blue);
+    }
+
+    .imagery-header.cyan {
+      color: var(--cyan);
+    }
+
+    .imagery-header-icon {
+      display: grid;
+      place-items: center;
+    }
+
+    .imagery-code {
+      position: absolute;
+
+      top: 10px;
+      right: 10px;
+
+      z-index: 5;
+
+      padding:
+        5px 6px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 3px;
+
+      background:
+        rgba(
+          7,
+          13,
+          23,
+          0.8
+        );
+
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 6px;
+      font-weight: 600;
+    }
+
+    .imagery-footer {
+      position: absolute;
+
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      z-index: 4;
+
+      padding:
+        30px 10px 9px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      background:
+        linear-gradient(
+          180deg,
+          transparent,
+          rgba(
+            3,
+            8,
+            14,
+            0.92
+          )
+        );
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+    }
+
+    /* ============================================================
+       OUTPUT AREA
+       ============================================================ */
+
+    .output-stage {
+      height: 160px;
+
+      min-height: 160px;
+
+      padding:
+        0 7px 7px;
+
+      display: grid;
+
+      grid-template-columns:
+        1fr
+        1fr;
+
+      gap: 5px;
+    }
+
+    .output-panel {
+      position: relative;
+
+      overflow: hidden;
+
+      border:
+        1px solid var(--line);
+
+      background:
+        #070e18;
+    }
+
+    .output-panel img {
+      width: 100%;
+      height: 100%;
+
+      object-fit: contain;
+    }
+
+    .output-label {
+      position: absolute;
+
+      top: 9px;
+      left: 9px;
+
+      z-index: 5;
+
+      padding:
+        6px 8px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 3px;
+
+      background:
+        rgba(
+          7,
+          13,
+          23,
+          0.87
+        );
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.04em;
+
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       INTELLIGENCE PANEL
+       ============================================================ */
+
+    .intelligence {
+      grid-area: intel;
+
+      min-width: 0;
+      min-height: 0;
+
+      display: flex;
+      flex-direction: column;
+
+      background:
+        var(--intel);
+
+      border-left:
+        1px solid var(--line);
+    }
+
+    .intel-header {
+      min-height: 86px;
+
+      padding:
+        20px 19px 16px;
+
+      border-bottom:
+        1px solid var(--line);
+    }
+
+    .intel-title {
+      color: var(--text);
+
+      font-size: 21px;
+      font-weight: 760;
+
+      letter-spacing: -0.038em;
+    }
+
+    .intel-subtitle {
+      margin-top: 6px;
+
+      color: var(--text-soft);
+
+      font-size: 10px;
+    }
+
+    .intel-body {
+      min-height: 0;
+
+      flex: 1;
+
+      overflow-y: auto;
+
+      padding:
+        13px;
+    }
+
+    .intel-card {
+      margin-bottom: 10px;
+
+      padding:
+        14px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 6px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.012
+        );
+    }
+
+    .intel-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .intel-card-title {
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 8px;
+      font-weight: 700;
+
+      letter-spacing: 0.095em;
+
+      text-transform: uppercase;
+    }
+
+    .summary-grid {
+      display: grid;
+
+      grid-template-columns:
+        1fr
+        1fr;
+
+      gap: 12px;
+
+      margin-top: 15px;
+    }
+
+    .summary-label {
+      color: var(--text-dim);
+
+      font-size: 8px;
+    }
+
+    .summary-value {
+      margin-top: 5px;
+
+      color: var(--text);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 14px;
+      font-weight: 700;
+
+      white-space: nowrap;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .summary-value.green {
+      color: var(--green);
+    }
+
+    .intel-divider {
+      height: 1px;
+
+      margin:
+        15px 0;
+
+      background:
+        var(--line);
+    }
+
+    .intel-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 12px;
+
+      padding:
+        7px 0;
+
+      border-bottom:
+        1px solid
+        rgba(
+          255,
+          255,
+          255,
+          0.045
+        );
+    }
+
+    .intel-row:last-child {
+      border-bottom: 0;
+    }
+
+    .intel-key {
+      color: var(--text-muted);
+
+      font-size: 8px;
+    }
+
+    .intel-value {
+      max-width: 195px;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 600;
+
+      text-align: right;
+    }
+
+    .intel-value.green {
+      color: var(--green);
+    }
+
+    .intel-value.yellow {
+      color: var(--yellow);
+    }
+
+    .coverage {
+      margin-top: 13px;
+    }
+
+    .coverage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      color: var(--text-muted);
+
+      font-size: 8px;
+    }
+
+    .coverage-header span:last-child {
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+    }
+
+    .coverage-track {
+      width: 100%;
+      height: 5px;
+
+      margin-top: 7px;
+
+      overflow: hidden;
+
+      border-radius: 99px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.07
+        );
+    }
+
+    .coverage-fill {
+      width: 0;
+      height: 100%;
+
+      border-radius: inherit;
+
+      background:
+        var(--green);
+
+      transition:
+        width 0.3s ease;
+    }
+
+    /* ============================================================
+       TERMINAL
+       ============================================================ */
+
+    .terminal {
+      height: 225px;
+
+      margin-top: 10px;
+
+      overflow-y: auto;
+
+      padding:
+        11px;
+
+      background:
+        #050c16;
+
+      border:
+        1px solid
+        rgba(
+          112,
+          145,
+          182,
+          0.08
+        );
+
+      color:
+        #9eb1c8;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+
+      line-height: 1.72;
+    }
+
+    .terminal-line {
+      margin-bottom: 2px;
+    }
+
+    .terminal-green {
+      color: var(--green);
+    }
+
+    .terminal-blue {
+      color: var(--cyan);
+    }
+
+    .terminal-yellow {
+      color: var(--yellow);
+    }
+
+    .terminal-red {
+      color: var(--red);
+    }
+
+    /* ============================================================
+       WARNING
+       ============================================================ */
+
+    .warning {
+      margin-bottom: 10px;
+
+      padding:
+        9px 10px;
+
+      border:
+        1px solid
+        rgba(
+          228,
+          191,
+          112,
+          0.18
+        );
+
+      border-radius: 5px;
+
+      background:
+        rgba(
+          228,
+          191,
+          112,
+          0.045
+        );
+
+      color:
+        var(--yellow);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+
+      line-height: 1.6;
+    }
+
+    /* ============================================================
+       INTELLIGENCE ACTIONS
+       ============================================================ */
+
+    .intel-actions {
+      display: grid;
+
+      grid-template-columns:
+        1fr
+        1fr;
+
+      gap: 6px;
+    }
+
+    .intel-button {
+      min-height: 38px;
+
+      border:
+        1px solid
+        var(--line-strong);
+
+      border-radius: 4px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.012
+        );
+
+      color: var(--text-soft);
+
+      cursor: pointer;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.05em;
+
+      text-transform: uppercase;
+    }
+
+    .intel-button.primary {
+      color: var(--green);
+
+      border-color:
+        var(--green-border);
+    }
+
+    .intel-button:hover {
+      color: var(--text);
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.04
+        );
+    }
+
+    /* ============================================================
+       INFERENCE DRAWER
+       ============================================================ */
+
+    .upload-panel {
+      position: fixed;
+
+      left:
+        var(--sidebar-width);
+
+      right:
+        var(--intel-width);
+
+      bottom: 0;
+
+      z-index: 120;
+
+      padding:
+        10px 11px;
+
+      background:
+        rgba(
+          7,
+          14,
+          25,
+          0.975
+        );
+
+      border-top:
+        1px solid
+        var(--line-strong);
+
+      box-shadow:
+        0 -18px 45px
+        rgba(
+          0,
+          0,
+          0,
+          0.26
+        );
+
+      transform:
+        translateY(100%);
+
+      transition:
+        transform 0.22s ease;
+    }
+
+    .upload-panel.open {
+      transform:
+        translateY(0);
+    }
+
+    .upload-form {
+      display: grid;
+
+      grid-template-columns:
+        1fr
+        1fr
+        auto;
+
+      gap: 7px;
+
+      align-items: end;
+    }
+
+    .upload-field {
+      padding:
+        9px;
+
+      border:
+        1px dashed
+        var(--line-strong);
+
+      border-radius: 4px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.014
+        );
+    }
+
+    .upload-label {
+      margin-bottom: 4px;
+
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.06em;
+
+      text-transform: uppercase;
+    }
+
+    .upload-help {
+      margin:
+        0 0 7px;
+
+      color: var(--text-dim);
+
+      font-size: 7px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+
+      color: var(--text-muted);
+
+      font-size: 7px;
+    }
+
+    .upload-submit {
+      min-height: 54px;
+
+      padding:
+        0 16px;
+
+      border:
+        1px solid
+        var(--green-border);
+
+      border-radius: 4px;
+
+      background:
+        var(--green-soft);
+
+      color: var(--green);
+
+      cursor: pointer;
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+      font-weight: 700;
+
+      letter-spacing: 0.05em;
+
+      text-transform: uppercase;
+    }
+
+    .upload-submit:hover {
+      background:
+        rgba(
+          73,
+          221,
+          177,
+          0.13
+        );
+    }
+
+    .upload-submit:disabled {
+      cursor: wait;
+      opacity: 0.5;
+    }
+
+    /* ============================================================
+       MODAL
+       ============================================================ */
+
+    .modal-backdrop {
+      position: fixed;
+
+      inset: 0;
+
+      z-index: 200;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background:
+        rgba(
+          3,
+          8,
+          15,
+          0.78
+        );
+
+      backdrop-filter:
+        blur(8px);
+    }
+
+    .modal {
+      width:
+        min(
+          560px,
+          calc(100% - 28px)
+        );
+
+      max-height:
+        calc(100vh - 34px);
+
+      overflow-y: auto;
+
+      padding:
+        20px;
+
+      border:
+        1px solid
+        var(--line-strong);
+
+      border-radius: 8px;
+
+      background:
+        #101a2b;
+
+      box-shadow:
+        0 30px 90px
+        rgba(
+          0,
+          0,
+          0,
+          0.38
+        );
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      color: var(--text);
+
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .modal-close {
+      width: 30px;
+      height: 30px;
+
+      border-radius: 4px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.04
+        );
+
+      color: var(--text-soft);
+
+      cursor: pointer;
+
+      font-size: 17px;
+    }
+
+    .modal-close:hover {
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.07
+        );
+    }
+
+    .modal-rows {
+      margin-top: 14px;
+    }
+
+    .modal-row {
+      display: grid;
+
+      grid-template-columns:
+        145px
+        minmax(0, 1fr);
+
+      gap: 13px;
+
+      padding:
+        9px 0;
+
+      border-bottom:
+        1px solid
+        var(--line);
+    }
+
+    .modal-key {
+      color: var(--text-dim);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+    }
+
+    .modal-value {
+      color: var(--text-soft);
+
+      font-family:
+        "IBM Plex Mono",
+        monospace;
+
+      font-size: 7px;
+
+      overflow-wrap: anywhere;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+
+    @media (max-width: 1200px) {
+      :root {
+        --sidebar-width: 205px;
+        --intel-width: 320px;
+      }
+
+      .top-tabs {
+        display: none;
+      }
+
+      .mission-id {
+        max-width: 250px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        width: 100%;
+        height: auto;
+        min-height: 100vh;
+
+        display: flex;
+        flex-direction: column;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+
+        min-height: var(--top-height);
+      }
+
+      .brand-area {
+        width: auto;
+        min-width: 0;
+
+        border-right: 0;
+      }
+
+      .mission {
+        display: none;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .workspace {
+        min-height: 820px;
+      }
+
+      .intelligence {
+        min-height: 610px;
+
+        border-left: 0;
+
+        border-top:
+          1px solid
+          var(--line);
+      }
+
+      .upload-panel {
+        left: 0;
+        right: 0;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .imagery-stage {
+        grid-template-columns: 1fr;
+
+        grid-auto-rows: 340px;
+      }
+
+      .output-stage {
+        height: auto;
+
+        grid-template-columns: 1fr;
+
+        grid-auto-rows: 260px;
+      }
+
+      .upload-form {
+        grid-template-columns: 1fr;
+      }
+
+      .upload-submit {
+        min-height: 40px;
+      }
+    }
   </style>
 </head>
-<body>
-  <h1>GeoRescue AI</h1>
-  <p>Multimodal disaster damage segmentation prototype.</p>
-  <section>
-    <div id="health" class="status">Checking API health…</div>
-    <form id="form">
-      <label for="optical">Pre-disaster optical RGB image</label>
-      <input id="optical" type="file" accept="image/*" required />
-      <label for="sar">Post-disaster SAR image</label>
-      <input id="sar" type="file" accept="image/*" required />
-      <button type="submit">Run Segmentation</button>
-    </form>
-    <p id="message"></p>
-    <img id="result" alt="Prediction mask" hidden />
-  </section>
-  <script>
-    fetch('/health').then(r => r.json()).then(data => {
-      document.getElementById('health').textContent = `API: ${data.status} | device: ${data.device} | checkpoint: ${data.checkpoint_exists}`;
-    }).catch(() => document.getElementById('health').textContent = 'API health check failed');
 
-    document.getElementById('form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const formData = new FormData();
-      formData.append('optical', document.getElementById('optical').files[0]);
-      formData.append('sar', document.getElementById('sar').files[0]);
-      document.getElementById('message').textContent = 'Running inference…';
-      const response = await fetch('/predict', { method: 'POST', body: formData });
+
+<body>
+
+<div class="app">
+
+  <!-- ==========================================================
+       TOP BAR
+       ========================================================== -->
+
+  <header class="topbar">
+
+    <div class="brand-area">
+
+      <div
+        id="brandButton"
+        class="brand"
+        title="Return to analysis"
+      >
+
+        <div class="brand-mark">
+
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M7 13l-3 3 4 4 3-3" />
+            <path d="M17 11l3-3-4-4-3 3" />
+            <path d="M8 16L16 8" />
+            <path d="M9 9l6 6" />
+            <circle
+              cx="12"
+              cy="12"
+              r="2"
+            />
+          </svg>
+
+        </div>
+
+
+        <div class="brand-text">
+
+          <div class="brand-name">
+            GeoRescue AI
+          </div>
+
+          <div class="brand-caption">
+            Satellite analysis
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="top-main">
+
+      <div class="mission">
+
+        <div class="mission-info">
+
+          <div class="mission-label">
+            Active mission
+          </div>
+
+          <div
+            id="missionId"
+            class="mission-id"
+          >
+            BRIGHT DFC25 Analysis
+          </div>
+
+        </div>
+
+
+        <div class="telemetry">
+
+          <span
+            id="telemetryDot"
+            class="telemetry-dot"
+          ></span>
+
+          <span id="telemetryText">
+            Live telemetry
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <nav class="top-tabs">
+
+        <button
+          class="top-tab active"
+          data-view="analysis"
+        >
+          Analysis
+        </button>
+
+        <button
+          class="top-tab"
+          data-view="dashboard"
+        >
+          Dashboard
+        </button>
+
+        <button
+          class="top-tab"
+          data-view="reports"
+        >
+          Reports
+        </button>
+
+      </nav>
+
+
+      <div class="top-actions">
+
+        <button
+          id="refreshButton"
+          class="top-action"
+          title="Refresh live data"
+        >
+          ↻
+        </button>
+
+        <button
+          id="settingsButton"
+          class="top-action"
+          title="System details"
+        >
+          ⚙
+        </button>
+
+        <button
+          id="profileButton"
+          class="top-action"
+          title="Case profile"
+        >
+          ◉
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- ==========================================================
+       SIDEBAR
+       ========================================================== -->
+
+  <aside class="sidebar">
+
+    <div class="pipeline">
+
+      <div class="pipeline-label">
+        Pipeline
+      </div>
+
+      <div class="pipeline-name">
+        Analysis Engine v4.2
+      </div>
+
+    </div>
+
+
+    <nav class="sidebar-nav">
+
+      <div class="sidebar-label">
+        Mission workspace
+      </div>
+
+
+      <!-- IMAGERY -->
+
+      <button
+        class="side-item active"
+        data-module="Imagery"
+      >
+
+        <span class="side-icon">
+
+          <svg
+            class="icon-small"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M7 13l-3 3 4 4 3-3" />
+            <path d="M17 11l3-3-4-4-3 3" />
+            <path d="M8 16L16 8" />
+            <path d="M9 9l6 6" />
+            <circle
+              cx="12"
+              cy="12"
+              r="2"
+            />
+          </svg>
+
+        </span>
+
+        <span>
+          Imagery
+        </span>
+
+      </button>
+
+
+      <!-- AI MODELS -->
+
+      <button
+        class="side-item"
+        data-module="AI Models"
+      >
+
+        <span class="side-icon">
+
+          <svg
+            class="icon-small"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <rect
+              x="5"
+              y="5"
+              width="14"
+              height="14"
+              rx="3"
+            />
+
+            <path d="M9 9h6v6H9z" />
+
+            <path d="M9 2v3" />
+            <path d="M15 2v3" />
+            <path d="M9 19v3" />
+            <path d="M15 19v3" />
+
+            <path d="M2 9h3" />
+            <path d="M2 15h3" />
+            <path d="M19 9h3" />
+            <path d="M19 15h3" />
+          </svg>
+
+        </span>
+
+        <span>
+          AI Models
+        </span>
+
+      </button>
+
+
+      <!-- INFERENCE -->
+
+      <button
+        class="side-item"
+        data-module="Inference"
+      >
+
+        <span class="side-icon">
+
+          <svg
+            class="icon-small"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10"
+              cy="10"
+              r="6"
+            />
+
+            <path d="M14.5 14.5L20 20" />
+
+            <path d="M10 7v6" />
+            <path d="M7 10h6" />
+          </svg>
+
+        </span>
+
+        <span>
+          Inference
+        </span>
+
+      </button>
+
+
+      <!-- OVERLAYS -->
+
+      <button
+        class="side-item"
+        data-module="Overlays"
+      >
+
+        <span class="side-icon">
+
+          <svg
+            class="icon-small"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M12 3l8 4-8 4-8-4 8-4z" />
+
+            <path d="M4 12l8 4 8-4" />
+
+            <path d="M4 17l8 4 8-4" />
+          </svg>
+
+        </span>
+
+        <span>
+          Overlays
+        </span>
+
+      </button>
+
+
+      <!-- EXPORT -->
+
+      <button
+        class="side-item"
+        data-module="Export"
+      >
+
+        <span class="side-icon">
+
+          <svg
+            class="icon-small"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M12 3v12" />
+            <path d="M8 7l4-4 4 4" />
+            <path d="M5 13v6h14v-6" />
+            <path d="M8 19h8" />
+          </svg>
+
+        </span>
+
+        <span>
+          Export
+        </span>
+
+      </button>
+
+    </nav>
+
+
+    <div class="sidebar-bottom">
+
+      <button
+        id="runButton"
+        class="run-command"
+      >
+
+        <span>
+          ▷
+        </span>
+
+        <span>
+          Run inference
+        </span>
+
+      </button>
+
+
+      <div class="sidebar-state">
+
+        <div class="system-state">
+
+          <span
+            id="systemIndicator"
+            class="state-indicator"
+          ></span>
+
+          <span id="systemStatus">
+            System Online
+          </span>
+
+        </div>
+
+        <span
+          id="connectionStatus"
+          class="connection-state"
+        >
+          Connected
+        </span>
+
+      </div>
+
+    </div>
+
+  </aside>
+
+
+  <!-- ==========================================================
+       CENTRAL WORKSPACE
+       ========================================================== -->
+
+  <main class="workspace">
+
+    <div class="workspace-header">
+
+      <div class="workspace-heading">
+
+        <div class="workspace-kicker">
+          Multimodal workspace
+        </div>
+
+        <div class="workspace-title">
+          Satellite imagery
+        </div>
+
+        <div class="workspace-subtitle">
+          Synchronized optical, radar and reference views
+        </div>
+
+      </div>
+
+
+      <div class="workspace-tools">
+
+        <button
+          id="fitButton"
+          class="tool active"
+        >
+          FIT
+        </button>
+
+        <button
+          id="zoomButton"
+          class="tool"
+        >
+          100%
+        </button>
+
+        <button
+          id="gridButton"
+          class="tool"
+        >
+          GRID
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- ==========================================================
+         MAIN IMAGERY
+         ========================================================== -->
+
+    <section class="imagery-stage">
+
+
+      <!-- OPTICAL -->
+
+      <article
+        class="imagery-panel selected"
+        data-panel="optical"
+      >
+
+        <div class="imagery-header green">
+
+          <span class="imagery-header-icon">
+
+            <svg
+              class="icon-tiny"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M7 13l-3 3 4 4 3-3" />
+              <path d="M17 11l3-3-4-4-3 3" />
+              <path d="M8 16L16 8" />
+              <path d="M9 9l6 6" />
+              <circle
+                cx="12"
+                cy="12"
+                r="2"
+              />
+            </svg>
+
+          </span>
+
+          <span>
+            Pre-event optical
+          </span>
+
+        </div>
+
+
+        <div class="imagery-code">
+          RGB / CH-03
+        </div>
+
+
+        <img
+          id="mainOptical"
+          alt="Pre-event optical satellite imagery"
+        />
+
+
+        <div class="imagery-footer">
+
+          <span>
+            Optical RGB
+          </span>
+
+          <span>
+            1024 × 1024
+          </span>
+
+        </div>
+
+      </article>
+
+
+      <!-- SAR -->
+
+      <article
+        class="imagery-panel"
+        data-panel="sar"
+      >
+
+        <div class="imagery-header blue">
+
+          <span class="imagery-header-icon">
+
+            <svg
+              class="icon-tiny"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M7 13l-3 3 4 4 3-3" />
+              <path d="M17 11l3-3-4-4-3 3" />
+              <path d="M8 16L16 8" />
+              <path d="M9 9l6 6" />
+              <circle
+                cx="12"
+                cy="12"
+                r="2"
+              />
+            </svg>
+
+          </span>
+
+          <span>
+            Post-event SAR
+          </span>
+
+        </div>
+
+
+        <div class="imagery-code">
+          RADAR / CH-01
+        </div>
+
+
+        <img
+          id="mainSar"
+          alt="Post-event SAR satellite imagery"
+        />
+
+
+        <div class="imagery-footer">
+
+          <span>
+            Radar observation
+          </span>
+
+          <span>
+            1024 × 1024
+          </span>
+
+        </div>
+
+      </article>
+
+
+      <!-- TARGET -->
+
+      <article
+        class="imagery-panel"
+        data-panel="target"
+      >
+
+        <div class="imagery-header cyan">
+
+          <span class="imagery-header-icon">
+
+            <svg
+              class="icon-tiny"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M7 13l-3 3 4 4 3-3" />
+              <path d="M17 11l3-3-4-4-3 3" />
+              <path d="M8 16L16 8" />
+              <path d="M9 9l6 6" />
+              <circle
+                cx="12"
+                cy="12"
+                r="2"
+              />
+            </svg>
+
+          </span>
+
+          <span>
+            Reference target
+          </span>
+
+        </div>
+
+
+        <div class="imagery-code">
+          LABEL / REF
+        </div>
+
+
+        <img
+          id="mainTarget"
+          alt="BRIGHT reference target"
+        />
+
+
+        <div class="imagery-footer">
+
+          <span>
+            Ground truth
+          </span>
+
+          <span id="targetMeta">
+            Loading
+          </span>
+
+        </div>
+
+      </article>
+
+    </section>
+
+
+    <!-- ==========================================================
+         OUTPUTS
+         ========================================================== -->
+
+    <section class="output-stage">
+
+      <article class="output-panel">
+
+        <div class="output-label">
+          Ground truth overlay
+        </div>
+
+        <img
+          id="mainTargetOverlay"
+          alt="Ground truth overlay"
+        />
+
+      </article>
+
+
+      <article class="output-panel">
+
+        <div class="output-label">
+          AI prediction overlay
+        </div>
+
+        <img
+          id="mainPredictionOverlay"
+          alt="AI prediction overlay"
+        />
+
+      </article>
+
+    </section>
+
+  </main>
+
+
+  <!-- ==========================================================
+       INTELLIGENCE PANEL
+       ========================================================== -->
+
+  <aside class="intelligence">
+
+    <header class="intel-header">
+
+      <div class="intel-title">
+        Impact Intelligence
+      </div>
+
+      <div class="intel-subtitle">
+        Live multimodal case analysis.
+      </div>
+
+    </header>
+
+
+    <div class="intel-body">
+
+
+      <!-- ASSESSMENT -->
+
+      <section class="intel-card">
+
+        <div class="intel-card-title">
+          Assessment summary
+        </div>
+
+
+        <div class="summary-grid">
+
+          <div>
+
+            <div class="summary-label">
+              Active case
+            </div>
+
+            <div
+              id="summaryCase"
+              class="summary-value"
+            >
+              —
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <div class="summary-label">
+              Input
+            </div>
+
+            <div
+              id="summaryInput"
+              class="summary-value green"
+            >
+              6 CH
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="intel-divider"></div>
+
+
+        <div class="intel-row">
+
+          <span class="intel-key">
+            Reference
+          </span>
+
+          <span
+            id="referenceStatus"
+            class="intel-value green"
+          >
+            Loaded
+          </span>
+
+        </div>
+
+
+        <div class="intel-row">
+
+          <span class="intel-key">
+            Runtime
+          </span>
+
+          <span
+            id="runtimeStatus"
+            class="intel-value"
+          >
+            —
+          </span>
+
+        </div>
+
+
+        <div class="intel-row">
+
+          <span class="intel-key">
+            Checkpoint
+          </span>
+
+          <span
+            id="checkpointStatus"
+            class="intel-value yellow"
+          >
+            Not loaded
+          </span>
+
+        </div>
+
+
+        <div class="coverage">
+
+          <div class="coverage-header">
+
+            <span>
+              Reference positive area
+            </span>
+
+            <span
+              id="referenceCoverageText"
+            >
+              —
+            </span>
+
+          </div>
+
+          <div class="coverage-track">
+
+            <span
+              id="referenceCoverageBar"
+              class="coverage-fill"
+            ></span>
+
+          </div>
+
+        </div>
+
+
+        <div class="coverage">
+
+          <div class="coverage-header">
+
+            <span>
+              Prediction positive area
+            </span>
+
+            <span
+              id="predictionCoverageText"
+            >
+              —
+            </span>
+
+          </div>
+
+          <div class="coverage-track">
+
+            <span
+              id="predictionCoverageBar"
+              class="coverage-fill"
+            ></span>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- CASE INFORMATION -->
+
+      <section class="intel-card">
+
+        <div class="intel-card-title">
+          Case information
+        </div>
+
+
+        <div style="margin-top: 9px;">
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Sample
+            </span>
+
+            <span
+              id="caseId"
+              class="intel-value"
+            >
+              —
+            </span>
+
+          </div>
+
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Dataset
+            </span>
+
+            <span class="intel-value">
+              BRIGHT DFC25
+            </span>
+
+          </div>
+
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Event
+            </span>
+
+            <span class="intel-value">
+              Marshall-Wildfire
+            </span>
+
+          </div>
+
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Projection
+            </span>
+
+            <span class="intel-value">
+              EPSG:26913
+            </span>
+
+          </div>
+
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Raster
+            </span>
+
+            <span class="intel-value">
+              1024 × 1024
+            </span>
+
+          </div>
+
+
+          <div class="intel-row">
+
+            <span class="intel-key">
+              Target classes
+            </span>
+
+            <span
+              id="targetClasses"
+              class="intel-value"
+            >
+              —
+            </span>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- TERMINAL -->
+
+      <section class="intel-card">
+
+        <div class="intel-card-title">
+          Terminal logs
+        </div>
+
+
+        <div
+          id="terminal"
+          class="terminal"
+        >
+
+          <div class="terminal-line">
+            [SYSTEM] Initializing console...
+          </div>
+
+          <div class="terminal-line">
+            [DATA] Waiting for BRIGHT case...
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- WARNING -->
+
+      <div
+        id="warning"
+        class="warning hidden"
+      ></div>
+
+
+      <!-- ACTIONS -->
+
+      <div class="intel-actions">
+
+        <button
+          id="detailsButton"
+          class="intel-button primary"
+        >
+          View details
+        </button>
+
+        <button
+          id="exportButton"
+          class="intel-button"
+        >
+          Export
+        </button>
+
+      </div>
+
+    </div>
+
+  </aside>
+
+</div>
+
+
+<!-- ==============================================================
+     CUSTOM INFERENCE DRAWER
+     ============================================================== -->
+
+<div
+  id="uploadPanel"
+  class="upload-panel"
+>
+
+  <form
+    id="uploadForm"
+    class="upload-form"
+  >
+
+    <div class="upload-field">
+
+      <div class="upload-label">
+        Pre-event optical
+      </div>
+
+      <div class="upload-help">
+        RGB image.
+      </div>
+
+      <input
+        id="opticalInput"
+        type="file"
+        accept="image/*"
+        required
+      />
+
+    </div>
+
+
+    <div class="upload-field">
+
+      <div class="upload-label">
+        Post-event SAR
+      </div>
+
+      <div class="upload-help">
+        Matching radar image.
+      </div>
+
+      <input
+        id="sarInput"
+        type="file"
+        accept="image/*"
+        required
+      />
+
+    </div>
+
+
+    <button
+      id="uploadSubmit"
+      class="upload-submit"
+      type="submit"
+    >
+      Run analysis
+    </button>
+
+  </form>
+
+</div>
+
+
+<!-- ==============================================================
+     DETAILS MODAL
+     ============================================================== -->
+
+<div
+  id="modalBackdrop"
+  class="modal-backdrop hidden"
+>
+
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+  >
+
+    <div class="modal-head">
+
+      <div class="modal-title">
+        Case details
+      </div>
+
+      <button
+        id="modalClose"
+        class="modal-close"
+        aria-label="Close details"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div
+      id="modalRows"
+      class="modal-rows"
+    ></div>
+
+  </div>
+
+</div>
+
+
+<script>
+  /* ============================================================
+     APPLICATION STATE
+     ============================================================ */
+
+  const state = {
+    demo: null,
+    health: null,
+
+    zoomed: false,
+    grid: false,
+
+    currentView: "analysis",
+
+    customPredictionUrl: null,
+
+    referenceCoverage: null,
+    predictionCoverage: null,
+  };
+
+
+  /* ============================================================
+     DOM HELPERS
+     ============================================================ */
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+
+  function setText(
+    id,
+    value
+  ) {
+    const element =
+      $(id);
+
+    if (element) {
+      element.textContent =
+        value;
+    }
+  }
+
+
+  function timestamp() {
+    return new Date().toLocaleTimeString(
+      [],
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }
+    );
+  }
+
+
+  function log(
+    message,
+    className = ""
+  ) {
+    const terminal =
+      $("terminal");
+
+    if (!terminal) {
+      return;
+    }
+
+    const line =
+      document.createElement(
+        "div"
+      );
+
+    line.className =
+      `terminal-line ${className}`.trim();
+
+    line.textContent =
+      `[${timestamp()}] ${message}`;
+
+    terminal.appendChild(
+      line
+    );
+
+    while (
+      terminal.children.length > 100
+    ) {
+      terminal.removeChild(
+        terminal.firstElementChild
+      );
+    }
+
+    terminal.scrollTop =
+      terminal.scrollHeight;
+  }
+
+
+  /* ============================================================
+     HEALTH / REAL-TIME TELEMETRY
+     ============================================================ */
+
+  async function loadHealth(
+    silent = false
+  ) {
+
+    try {
+
+      const response =
+        await fetch(
+          "/health",
+          {
+            cache: "no-store",
+          }
+        );
+
       if (!response.ok) {
-        document.getElementById('message').textContent = await response.text();
+        throw new Error(
+          "Health endpoint failed."
+        );
+      }
+
+      const data =
+        await response.json();
+
+      state.health =
+        data;
+
+      const online =
+        data.status === "ok";
+
+
+      $("systemIndicator")
+        .classList.toggle(
+          "offline",
+          !online
+        );
+
+      $("telemetryDot")
+        .classList.toggle(
+          "offline",
+          !online
+        );
+
+
+      setText(
+        "systemStatus",
+        online
+          ? "System Online"
+          : "System Degraded"
+      );
+
+
+      setText(
+        "connectionStatus",
+        online
+          ? "Connected"
+          : "Degraded"
+      );
+
+
+      setText(
+        "telemetryText",
+        online
+          ? "Live telemetry"
+          : "Telemetry degraded"
+      );
+
+
+      setText(
+        "runtimeStatus",
+        data.device || "—"
+      );
+
+
+      setText(
+        "checkpointStatus",
+        data.checkpoint_loaded
+          ? "Loaded"
+          : "Not loaded"
+      );
+
+
+      if (!silent) {
+
+        log(
+          online
+            ? "Telemetry heartbeat OK."
+            : "API reported degraded state.",
+          online
+            ? "terminal-green"
+            : "terminal-yellow"
+        );
+      }
+
+    } catch (error) {
+
+      $("systemIndicator")
+        .classList.add(
+          "offline"
+        );
+
+      $("telemetryDot")
+        .classList.add(
+          "offline"
+        );
+
+
+      setText(
+        "systemStatus",
+        "System Offline"
+      );
+
+      setText(
+        "connectionStatus",
+        "Disconnected"
+      );
+
+      setText(
+        "telemetryText",
+        "Telemetry offline"
+      );
+
+      setText(
+        "runtimeStatus",
+        "Unavailable"
+      );
+
+
+      log(
+        "Health request failed.",
+        "terminal-red"
+      );
+    }
+  }
+
+
+  /* ============================================================
+     BRIGHT CASE
+     ============================================================ */
+
+  async function loadDemo(
+    silent = false
+  ) {
+
+    try {
+
+      const response =
+        await fetch(
+          "/bright-demo/info",
+          {
+            cache: "no-store",
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "BRIGHT demo endpoint failed."
+        );
+      }
+
+      const data =
+        await response.json();
+
+
+      if (!data.available) {
+
+        setText(
+          "referenceStatus",
+          "Unavailable"
+        );
+
+        log(
+          "No local BRIGHT case available.",
+          "terminal-yellow"
+        );
+
         return;
       }
-      const blob = await response.blob();
-      document.getElementById('result').src = URL.createObjectURL(blob);
-      document.getElementById('result').hidden = false;
-      document.getElementById('message').textContent = 'Prediction complete.';
-    });
-  </script>
+
+
+      state.demo =
+        data;
+
+      const files =
+        data.files || {};
+
+      const metadata =
+        data.metadata || {};
+
+
+      /* Main imagery */
+
+      $("mainOptical").src =
+        `${files.optical}?t=${Date.now()}`;
+
+      $("mainSar").src =
+        `${files.sar}?t=${Date.now()}`;
+
+      $("mainTarget").src =
+        `${files.target}?t=${Date.now()}`;
+
+      $("mainTargetOverlay").src =
+        `${files.target_overlay}?t=${Date.now()}`;
+
+      $("mainPredictionOverlay").src =
+        `${files.prediction_overlay}?t=${Date.now()}`;
+
+
+      /* Case information */
+
+      setText(
+        "missionId",
+        `${data.sample_id} · DFC25`
+      );
+
+      setText(
+        "summaryCase",
+        data.sample_id
+      );
+
+      setText(
+        "caseId",
+        data.sample_id
+      );
+
+
+      /* Input shape */
+
+      if (
+        Array.isArray(
+          metadata.input_shape
+        ) &&
+        metadata.input_shape.length
+      ) {
+
+        setText(
+          "summaryInput",
+          `${metadata.input_shape[0]} CH`
+        );
+      }
+
+
+      /* Target classes */
+
+      const targetClasses =
+        Array.isArray(
+          metadata.target_classes
+        )
+          ? metadata.target_classes
+          : [];
+
+
+      setText(
+        "targetClasses",
+        targetClasses.length
+          ? targetClasses.join(", ")
+          : "—"
+      );
+
+
+      setText(
+        "targetMeta",
+        targetClasses.length
+          ? `${targetClasses.length} classes`
+          : "Reference"
+      );
+
+
+      /* Warning */
+
+      const warning =
+        $("warning");
+
+      if (
+        metadata.warning
+      ) {
+
+        warning.textContent =
+          metadata.warning;
+
+        warning.classList.remove(
+          "hidden"
+        );
+
+      } else {
+
+        warning.classList.add(
+          "hidden"
+        );
+      }
+
+
+      if (!silent) {
+
+        log(
+          `Case loaded: ${data.sample_id}`,
+          "terminal-green"
+        );
+
+        log(
+          "Pre-event optical loaded.",
+          "terminal-green"
+        );
+
+        log(
+          "Post-event SAR loaded.",
+          "terminal-green"
+        );
+
+        log(
+          "Six-channel multimodal workspace ready.",
+          "terminal-blue"
+        );
+      }
+
+
+      /*
+        Coverage is calculated from the real generated
+        mask assets rather than invented percentages.
+      */
+
+      await calculateCoverage(
+        files.target,
+        "reference"
+      );
+
+      await calculateCoverage(
+        files.prediction,
+        "prediction"
+      );
+
+
+    } catch (error) {
+
+      log(
+        "Unable to load BRIGHT case.",
+        "terminal-red"
+      );
+    }
+  }
+
+
+  /* ============================================================
+     REAL MASK COVERAGE
+     ============================================================ */
+
+  async function calculateCoverage(
+    imageUrl,
+    type
+  ) {
+
+    if (!imageUrl) {
+      return;
+    }
+
+
+    try {
+
+      const image =
+        new Image();
+
+      image.crossOrigin =
+        "anonymous";
+
+
+      await new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          image.onload =
+            resolve;
+
+          image.onerror =
+            reject;
+
+          image.src =
+            `${imageUrl}${imageUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+        }
+      );
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        image.naturalWidth;
+
+      canvas.height =
+        image.naturalHeight;
+
+
+      const context =
+        canvas.getContext(
+          "2d",
+          {
+            willReadFrequently:
+              true,
+          }
+        );
+
+
+      context.drawImage(
+        image,
+        0,
+        0
+      );
+
+
+      const pixels =
+        context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        ).data;
+
+
+      let positive =
+        0;
+
+      const total =
+        canvas.width *
+        canvas.height;
+
+
+      for (
+        let i = 0;
+        i < pixels.length;
+        i += 4
+      ) {
+
+        if (
+          pixels[i] > 10 ||
+          pixels[i + 1] > 10 ||
+          pixels[i + 2] > 10
+        ) {
+
+          positive += 1;
+        }
+      }
+
+
+      const percentage =
+        total > 0
+          ? (
+              positive /
+              total
+            ) *
+            100
+          : 0;
+
+
+      if (
+        type === "reference"
+      ) {
+
+        state.referenceCoverage =
+          percentage;
+
+        setText(
+          "referenceCoverageText",
+          `${percentage.toFixed(2)}%`
+        );
+
+        $("referenceCoverageBar")
+          .style.width =
+          `${Math.min(
+            percentage,
+            100
+          )}%`;
+
+      } else {
+
+        state.predictionCoverage =
+          percentage;
+
+        setText(
+          "predictionCoverageText",
+          `${percentage.toFixed(2)}%`
+        );
+
+        $("predictionCoverageBar")
+          .style.width =
+          `${Math.min(
+            percentage,
+            100
+          )}%`;
+      }
+
+
+    } catch (error) {
+
+      log(
+        `Could not calculate ${type} area.`,
+        "terminal-yellow"
+      );
+    }
+  }
+
+
+  /* ============================================================
+     TOP NAVIGATION
+     ============================================================ */
+
+  document
+    .querySelectorAll(
+      ".top-tab"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(
+                ".top-tab"
+              )
+              .forEach(
+                (item) =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+            button.classList.add(
+              "active"
+            );
+
+
+            const view =
+              button.dataset.view;
+
+            state.currentView =
+              view;
+
+
+            if (
+              view === "analysis"
+            ) {
+
+              log(
+                "Analysis workspace selected.",
+                "terminal-blue"
+              );
+
+            }
+
+
+            if (
+              view === "dashboard"
+            ) {
+
+              openDashboardSummary();
+
+            }
+
+
+            if (
+              view === "reports"
+            ) {
+
+              generateReport();
+
+            }
+          }
+        );
+      }
+    );
+
+
+  /* ============================================================
+     SIDEBAR MODULES
+     ============================================================ */
+
+  document
+    .querySelectorAll(
+      ".side-item"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(
+                ".side-item"
+              )
+              .forEach(
+                (item) =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+            button.classList.add(
+              "active"
+            );
+
+
+            const module =
+              button.dataset.module;
+
+
+            switch (
+              module
+            ) {
+
+              case "Imagery":
+
+                log(
+                  "Imagery workspace selected.",
+                  "terminal-blue"
+                );
+
+                focusImagery();
+
+                break;
+
+
+              case "AI Models":
+
+                log(
+                  "Model information requested.",
+                  "terminal-blue"
+                );
+
+                openDetails();
+
+                break;
+
+
+              case "Inference":
+
+                $("uploadPanel")
+                  .classList.add(
+                    "open"
+                  );
+
+                log(
+                  "Inference workspace opened.",
+                  "terminal-blue"
+                );
+
+                break;
+
+
+              case "Overlays":
+
+                focusOverlays();
+
+                log(
+                  "Overlay workspace focused.",
+                  "terminal-blue"
+                );
+
+                break;
+
+
+              case "Export":
+
+                exportDemo();
+
+                break;
+            }
+
+          }
+        );
+      }
+    );
+
+
+  /* ============================================================
+     BRAND
+     ============================================================ */
+
+  $("brandButton")
+    .addEventListener(
+      "click",
+      () => {
+
+        focusImagery();
+
+        document
+          .querySelectorAll(
+            ".top-tab"
+          )
+          .forEach(
+            (item) =>
+              item.classList.toggle(
+                "active",
+                item.dataset.view === "analysis"
+              )
+          );
+
+        log(
+          "Analysis workspace selected.",
+          "terminal-blue"
+        );
+      }
+    );
+
+
+  /* ============================================================
+     IMAGE PANEL SELECTION
+     ============================================================ */
+
+  document
+    .querySelectorAll(
+      ".imagery-panel"
+    )
+    .forEach(
+      (panel) => {
+
+        panel.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(
+                ".imagery-panel"
+              )
+              .forEach(
+                (item) =>
+                  item.classList.remove(
+                    "selected"
+                  )
+              );
+
+            panel.classList.add(
+              "selected"
+            );
+
+
+            log(
+              `${panel.dataset.panel} imagery selected.`,
+              "terminal-blue"
+            );
+          }
+        );
+
+      }
+    );
+
+
+  /* ============================================================
+     FIT
+     ============================================================ */
+
+  $("fitButton")
+    .addEventListener(
+      "click",
+      () => {
+
+        state.zoomed =
+          false;
+
+
+        document
+          .querySelectorAll(
+            ".imagery-panel"
+          )
+          .forEach(
+            (panel) =>
+              panel.classList.remove(
+                "zoomed"
+              )
+          );
+
+
+        $("fitButton")
+          .classList.add(
+            "active"
+          );
+
+        $("zoomButton")
+          .classList.remove(
+            "active"
+          );
+
+
+        log(
+          "Imagery fitted to viewport.",
+          "terminal-blue"
+        );
+      }
+    );
+
+
+  /* ============================================================
+     ZOOM
+     ============================================================ */
+
+  $("zoomButton")
+    .addEventListener(
+      "click",
+      () => {
+
+        state.zoomed =
+          !state.zoomed;
+
+
+        document
+          .querySelectorAll(
+            ".imagery-panel"
+          )
+          .forEach(
+            (panel) =>
+              panel.classList.toggle(
+                "zoomed",
+                state.zoomed
+              )
+          );
+
+
+        $("zoomButton")
+          .classList.toggle(
+            "active",
+            state.zoomed
+          );
+
+        $("fitButton")
+          .classList.toggle(
+            "active",
+            !state.zoomed
+          );
+
+
+        log(
+          state.zoomed
+            ? "100% zoom enabled."
+            : "Fit mode restored.",
+          "terminal-blue"
+        );
+      }
+    );
+
+
+  /* ============================================================
+     GRID
+     ============================================================ */
+
+  $("gridButton")
+    .addEventListener(
+      "click",
+      () => {
+
+        state.grid =
+          !state.grid;
+
+
+        document
+          .querySelectorAll(
+            ".imagery-panel"
+          )
+          .forEach(
+            (panel) => {
+
+              panel.style.backgroundImage =
+                state.grid
+                  ? `
+                    linear-gradient(
+                      rgba(
+                        110,
+                        150,
+                        180,
+                        0.065
+                      ) 1px,
+                      transparent 1px
+                    ),
+                    linear-gradient(
+                      90deg,
+                      rgba(
+                        110,
+                        150,
+                        180,
+                        0.065
+                      ) 1px,
+                      transparent 1px
+                    )
+                  `
+                  : "";
+
+              panel.style.backgroundSize =
+                state.grid
+                  ? "32px 32px"
+                  : "";
+            }
+          );
+
+
+        $("gridButton")
+          .classList.toggle(
+            "active",
+            state.grid
+          );
+
+
+        log(
+          state.grid
+            ? "Spatial grid enabled."
+            : "Spatial grid disabled.",
+          "terminal-blue"
+        );
+      }
+    );
+
+
+  /* ============================================================
+     FOCUS IMAGERY
+     ============================================================ */
+
+  function focusImagery() {
+
+    window.scrollTo(
+      {
+        top: 0,
+        behavior: "smooth",
+      }
+    );
+
+
+    const panel =
+      document.querySelector(
+        '[data-panel="optical"]'
+      );
+
+    if (panel) {
+
+      document
+        .querySelectorAll(
+          ".imagery-panel"
+        )
+        .forEach(
+          (item) =>
+            item.classList.remove(
+              "selected"
+            )
+        );
+
+      panel.classList.add(
+        "selected"
+      );
+    }
+  }
+
+
+  /* ============================================================
+     FOCUS OVERLAYS
+     ============================================================ */
+
+  function focusOverlays() {
+
+    const panel =
+      $("mainPredictionOverlay")
+        ?.closest(
+          ".output-panel"
+        );
+
+    if (!panel) {
+      return;
+    }
+
+
+    panel.scrollIntoView(
+      {
+        behavior: "smooth",
+        block: "center",
+      }
+    );
+  }
+
+
+  /* ============================================================
+     RUN REAL-TIME DEMO REFRESH
+     ============================================================ */
+
+  $("runButton")
+    .addEventListener(
+      "click",
+      async () => {
+
+        const button =
+          $("runButton");
+
+
+        button.disabled =
+          true;
+
+        button.innerHTML =
+          `
+            <span>◌</span>
+            <span>Processing</span>
+          `;
+
+
+        log(
+          "Inference command received.",
+          "terminal-blue"
+        );
+
+
+        log(
+          "Refreshing active BRIGHT case.",
+          "terminal-blue"
+        );
+
+
+        try {
+
+          await loadHealth(
+            true
+          );
+
+          await loadDemo(
+            true
+          );
+
+
+          log(
+            "Multimodal case synchronized.",
+            "terminal-green"
+          );
+
+          log(
+            "Analysis workspace updated.",
+            "terminal-green"
+          );
+
+        } catch (error) {
+
+          log(
+            "Inference refresh failed.",
+            "terminal-red"
+          );
+
+        } finally {
+
+          button.disabled =
+            false;
+
+          button.innerHTML =
+            `
+              <span>▷</span>
+              <span>Run inference</span>
+            `;
+        }
+      }
+    );
+
+
+  /* ============================================================
+     CUSTOM UPLOAD INFERENCE
+     ============================================================ */
+
+  $("uploadForm")
+    .addEventListener(
+      "submit",
+      async (event) => {
+
+        event.preventDefault();
+
+
+        const optical =
+          $("opticalInput")
+            .files[0];
+
+        const sar =
+          $("sarInput")
+            .files[0];
+
+
+        const submit =
+          $("uploadSubmit");
+
+
+        if (
+          !optical ||
+          !sar
+        ) {
+
+          log(
+            "Both optical and SAR files are required.",
+            "terminal-red"
+          );
+
+          return;
+        }
+
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "optical",
+          optical
+        );
+
+        formData.append(
+          "sar",
+          sar
+        );
+
+
+        submit.disabled =
+          true;
+
+        submit.textContent =
+          "Processing...";
+
+
+        log(
+          `Upload started: ${optical.name}`,
+          "terminal-blue"
+        );
+
+
+        try {
+
+          const response =
+            await fetch(
+              "/predict",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+
+          if (!response.ok) {
+
+            const text =
+              await response.text();
+
+            throw new Error(
+              text ||
+              "Prediction request failed."
+            );
+          }
+
+
+          const blob =
+            await response.blob();
+
+
+          if (
+            state.customPredictionUrl
+          ) {
+
+            URL.revokeObjectURL(
+              state.customPredictionUrl
+            );
+          }
+
+
+          state.customPredictionUrl =
+            URL.createObjectURL(
+              blob
+            );
+
+
+          /*
+            The returned prediction is placed
+            directly into the live central output.
+          */
+
+          $("mainPredictionOverlay")
+            .src =
+            state.customPredictionUrl;
+
+
+          $("uploadPanel")
+            .classList.remove(
+              "open"
+            );
+
+
+          log(
+            "Prediction returned by /predict.",
+            "terminal-green"
+          );
+
+          log(
+            "Custom prediction overlay updated.",
+            "terminal-green"
+          );
+
+
+        } catch (error) {
+
+          log(
+            error.message ||
+            "Prediction request failed.",
+            "terminal-red"
+          );
+
+        } finally {
+
+          submit.disabled =
+            false;
+
+          submit.textContent =
+            "Run analysis";
+        }
+      }
+    );
+
+
+  /* ============================================================
+     REFRESH
+     ============================================================ */
+
+  $("refreshButton")
+    .addEventListener(
+      "click",
+      async () => {
+
+        log(
+          "Manual refresh requested.",
+          "terminal-blue"
+        );
+
+
+        await loadHealth(
+          true
+        );
+
+        await loadDemo(
+          true
+        );
+
+
+        log(
+          "Live data refreshed.",
+          "terminal-green"
+        );
+      }
+    );
+
+
+  /* ============================================================
+     DASHBOARD SUMMARY
+     ============================================================ */
+
+  function openDashboardSummary() {
+
+    if (!state.demo) {
+
+      log(
+        "Dashboard unavailable: no case loaded.",
+        "terminal-yellow"
+      );
+
+      return;
+    }
+
+
+    openDetails();
+  }
+
+
+  /* ============================================================
+     REPORT GENERATION
+     ============================================================ */
+
+  function generateReport() {
+
+    if (!state.demo) {
+
+      log(
+        "No active case available for report generation.",
+        "terminal-yellow"
+      );
+
+      return;
+    }
+
+
+    const metadata =
+      state.demo.metadata ||
+      {};
+
+
+    const report = {
+      generated_at:
+        new Date().toISOString(),
+
+      application:
+        "GeoRescue AI",
+
+      dataset:
+        "BRIGHT DFC25",
+
+      sample_id:
+        state.demo.sample_id,
+
+      input_shape:
+        metadata.input_shape || null,
+
+      target_shape:
+        metadata.target_shape || null,
+
+      target_classes:
+        metadata.target_classes || [],
+
+      prediction_classes:
+        metadata.prediction_classes || [],
+
+      device:
+        metadata.device || null,
+
+      checkpoint:
+        metadata.checkpoint || null,
+
+      reference_positive_area_percent:
+        state.referenceCoverage,
+
+      prediction_positive_area_percent:
+        state.predictionCoverage,
+
+      note:
+        metadata.warning ||
+        "No warning recorded.",
+    };
+
+
+    const blob =
+      new Blob(
+        [
+          JSON.stringify(
+            report,
+            null,
+            2
+          ),
+        ],
+        {
+          type:
+            "application/json",
+        }
+      );
+
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+
+    const anchor =
+      document.createElement(
+        "a"
+      );
+
+    anchor.href =
+      url;
+
+    anchor.download =
+      `${state.demo.sample_id}_georescue_report.json`;
+
+
+    document.body.appendChild(
+      anchor
+    );
+
+    anchor.click();
+
+    anchor.remove();
+
+
+    URL.revokeObjectURL(
+      url
+    );
+
+
+    log(
+      "Case report generated and downloaded.",
+      "terminal-green"
+    );
+  }
+
+
+  /* ============================================================
+     DETAILS
+     ============================================================ */
+
+  function openDetails() {
+
+    if (!state.demo) {
+
+      log(
+        "No BRIGHT case is loaded.",
+        "terminal-yellow"
+      );
+
+      return;
+    }
+
+
+    const metadata =
+      state.demo.metadata ||
+      {};
+
+
+    const rows = [
+      [
+        "Sample ID",
+        state.demo.sample_id ||
+          "—",
+      ],
+      [
+        "Dataset",
+        "BRIGHT DFC25",
+      ],
+      [
+        "Input shape",
+        Array.isArray(
+          metadata.input_shape
+        )
+          ? metadata.input_shape.join(
+              " × "
+            )
+          : "—",
+      ],
+      [
+        "Target shape",
+        Array.isArray(
+          metadata.target_shape
+        )
+          ? metadata.target_shape.join(
+              " × "
+            )
+          : "—",
+      ],
+      [
+        "Target classes",
+        Array.isArray(
+          metadata.target_classes
+        )
+          ? metadata.target_classes.join(
+              ", "
+            )
+          : "—",
+      ],
+      [
+        "Prediction classes",
+        Array.isArray(
+          metadata.prediction_classes
+        )
+          ? metadata.prediction_classes.join(
+              ", "
+            )
+          : "—",
+      ],
+      [
+        "Device",
+        metadata.device ||
+          "—",
+      ],
+      [
+        "Reference area",
+        state.referenceCoverage !== null
+          ? `${state.referenceCoverage.toFixed(2)}%`
+          : "—",
+      ],
+      [
+        "Prediction area",
+        state.predictionCoverage !== null
+          ? `${state.predictionCoverage.toFixed(2)}%`
+          : "—",
+      ],
+      [
+        "Checkpoint",
+        metadata.checkpoint ||
+          "None",
+      ],
+    ];
+
+
+    const container =
+      $("modalRows");
+
+    container.innerHTML =
+      "";
+
+
+    rows.forEach(
+      ([key, value]) => {
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+        row.className =
+          "modal-row";
+
+
+        const keyNode =
+          document.createElement(
+            "div"
+          );
+
+        keyNode.className =
+          "modal-key";
+
+        keyNode.textContent =
+          key;
+
+
+        const valueNode =
+          document.createElement(
+            "div"
+          );
+
+        valueNode.className =
+          "modal-value";
+
+        valueNode.textContent =
+          String(value);
+
+
+        row.appendChild(
+          keyNode
+        );
+
+        row.appendChild(
+          valueNode
+        );
+
+
+        container.appendChild(
+          row
+        );
+      }
+    );
+
+
+    $("modalBackdrop")
+      .classList.remove(
+        "hidden"
+      );
+
+
+    log(
+      "Case details opened.",
+      "terminal-blue"
+    );
+  }
+
+
+  $("detailsButton")
+    .addEventListener(
+      "click",
+      openDetails
+    );
+
+
+  $("settingsButton")
+    .addEventListener(
+      "click",
+      openDetails
+    );
+
+
+  $("profileButton")
+    .addEventListener(
+      "click",
+      openDetails
+    );
+
+
+  /* ============================================================
+     MODAL
+     ============================================================ */
+
+  $("modalClose")
+    .addEventListener(
+      "click",
+      () => {
+
+        $("modalBackdrop")
+          .classList.add(
+            "hidden"
+          );
+      }
+    );
+
+
+  $("modalBackdrop")
+    .addEventListener(
+      "click",
+      (event) => {
+
+        if (
+          event.target ===
+          $("modalBackdrop")
+        ) {
+
+          $("modalBackdrop")
+            .classList.add(
+              "hidden"
+            );
+        }
+      }
+    );
+
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+
+      if (
+        event.key ===
+        "Escape"
+      ) {
+
+        $("modalBackdrop")
+          .classList.add(
+            "hidden"
+          );
+
+        $("uploadPanel")
+          .classList.remove(
+            "open"
+          );
+      }
+    }
+  );
+
+
+  /* ============================================================
+     EXPORT
+     ============================================================ */
+
+  async function downloadAsset(
+    url,
+    filename
+  ) {
+
+    try {
+
+      const response =
+        await fetch(
+          url
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Asset download failed."
+        );
+      }
+
+
+      const blob =
+        await response.blob();
+
+
+      const objectUrl =
+        URL.createObjectURL(
+          blob
+        );
+
+
+      const anchor =
+        document.createElement(
+          "a"
+        );
+
+      anchor.href =
+        objectUrl;
+
+      anchor.download =
+        filename;
+
+
+      document.body.appendChild(
+        anchor
+      );
+
+      anchor.click();
+
+      anchor.remove();
+
+
+      URL.revokeObjectURL(
+        objectUrl
+      );
+
+
+    } catch (error) {
+
+      log(
+        error.message,
+        "terminal-red"
+      );
+    }
+  }
+
+
+  async function exportDemo() {
+
+    if (!state.demo) {
+
+      log(
+        "No active BRIGHT case to export.",
+        "terminal-yellow"
+      );
+
+      return;
+    }
+
+
+    const files =
+      state.demo.files || {};
+
+    const sample =
+      state.demo.sample_id ||
+      "bright_case";
+
+
+    const assets = [
+      [
+        files.optical,
+        `${sample}_optical.png`,
+      ],
+      [
+        files.sar,
+        `${sample}_sar.png`,
+      ],
+      [
+        files.target,
+        `${sample}_target.png`,
+      ],
+      [
+        files.prediction,
+        `${sample}_prediction.png`,
+      ],
+      [
+        files.target_overlay,
+        `${sample}_target_overlay.png`,
+      ],
+      [
+        files.prediction_overlay,
+        `${sample}_prediction_overlay.png`,
+      ],
+    ];
+
+
+    log(
+      "Preparing case export.",
+      "terminal-blue"
+    );
+
+
+    for (
+      const [
+        url,
+        filename
+      ]
+      of assets
+    ) {
+
+      if (!url) {
+        continue;
+      }
+
+      await downloadAsset(
+        url,
+        filename
+      );
+    }
+
+
+    log(
+      "Case imagery exported.",
+      "terminal-green"
+    );
+  }
+
+
+  $("exportButton")
+    .addEventListener(
+      "click",
+      exportDemo
+    );
+
+
+  /* ============================================================
+     LIVE POLLING
+     ============================================================ */
+
+  /*
+    Health:
+    every 3 seconds.
+
+    BRIGHT case metadata:
+    every 5 seconds.
+
+    This keeps the interface synchronized with
+    the backend without refreshing the page.
+  */
+
+  setInterval(
+    () => loadHealth(true),
+    3000
+  );
+
+  setInterval(
+    () => loadDemo(true),
+    5000
+  );
+
+
+  /* ============================================================
+     INITIALIZATION
+     ============================================================ */
+
+  async function initialize() {
+
+    log(
+      "Starting GeoRescue analysis console.",
+      "terminal-blue"
+    );
+
+
+    await loadHealth(
+      true
+    );
+
+    await loadDemo(
+      true
+    );
+
+
+    log(
+      "Analysis console ready.",
+      "terminal-green"
+    );
+  }
+
+
+  initialize();
+</script>
+
 </body>
 </html>

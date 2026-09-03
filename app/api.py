@@ -1,12 +1,16 @@
 """FastAPI inference service for GeoRescue AI.
 
-The API loads a trained checkpoint at startup, validates uploaded optical
-and SAR images, performs segmentation inference, and returns a PNG mask.
+The service provides:
+- health/status information;
+- uploaded optical + SAR inference;
+- a local BRIGHT DFC25 demonstration;
+- the lightweight web dashboard.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import os
 from pathlib import Path
 import sys
@@ -15,6 +19,7 @@ import numpy as np
 import torch
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,8 +30,15 @@ if str(SRC_ROOT) not in sys.path:
 
 from georescue.config import load_config
 from georescue.models import build_model
-from georescue.train_utils import load_checkpoint, select_device
+from georescue.train_utils import (
+    load_checkpoint,
+    select_device,
+)
 
+
+# ---------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------
 
 CONFIG_PATH = ROOT / os.getenv(
     "GEORESCUE_CONFIG",
@@ -38,21 +50,51 @@ CHECKPOINT_PATH = ROOT / os.getenv(
     "outputs/checkpoints/best_model.pt",
 )
 
+BRIGHT_DEMO_DIR = (
+    ROOT
+    / "outputs"
+    / "predictions"
+    / "bright_demo"
+)
+
+BRIGHT_DEMO_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+
+# ---------------------------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------------------------
 
 app = FastAPI(
     title="GeoRescue AI",
-    version="0.1.0",
-    description="Multimodal disaster damage segmentation API",
+    version="0.2.0",
+    description=(
+        "Multimodal disaster damage segmentation API "
+        "with BRIGHT DFC25 demonstration support."
+    ),
 )
+
 
 _state: dict[str, object] = {}
 
 
-def _load_state() -> None:
-    """Load configuration, model, device, and checkpoint into application state."""
-    cfg = load_config(CONFIG_PATH)
+# ---------------------------------------------------------------------
+# Model initialization
+# ---------------------------------------------------------------------
 
-    device = select_device(cfg.training.device)
+
+def _load_state() -> None:
+    """Load configuration, model, device, and optional checkpoint."""
+
+    cfg = load_config(
+        CONFIG_PATH
+    )
+
+    device = select_device(
+        cfg.training.device
+    )
 
     model = build_model(
         cfg.model.name,
@@ -63,35 +105,49 @@ def _load_state() -> None:
         cfg.model.dropout,
     ).to(device)
 
+    checkpoint_loaded = False
+
     if CHECKPOINT_PATH.exists():
         load_checkpoint(
             CHECKPOINT_PATH,
             model,
             device,
         )
+        checkpoint_loaded = True
 
     model.eval()
+
+    _state.clear()
 
     _state.update(
         config=cfg,
         device=device,
         model=model,
+        checkpoint_loaded=checkpoint_loaded,
     )
 
 
 @app.on_event("startup")
 def startup() -> None:
-    """Initialize the model when the FastAPI application starts."""
+    """Initialize model state when the FastAPI service starts."""
+
     try:
         _load_state()
+
     except Exception as exc:
-        # Keep the service alive so /health can expose the startup problem.
+        _state.clear()
         _state["startup_error"] = str(exc)
+
+
+# ---------------------------------------------------------------------
+# Health endpoint
+# ---------------------------------------------------------------------
 
 
 @app.get("/health")
 def health() -> dict[str, object]:
-    """Return API and model health information."""
+    """Return service and model health information."""
+
     return {
         "status": (
             "ok"
@@ -99,20 +155,40 @@ def health() -> dict[str, object]:
             else "degraded"
         ),
         "checkpoint_exists": CHECKPOINT_PATH.exists(),
+        "checkpoint_loaded": _state.get(
+            "checkpoint_loaded",
+            False,
+        ),
         "device": str(
             _state.get(
                 "device",
                 "uninitialized",
             )
         ),
-        "error": _state.get("startup_error"),
+        "error": _state.get(
+            "startup_error"
+        ),
     }
 
 
-@app.get("/", response_class=HTMLResponse)
+# ---------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------
+
+
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+)
 def index() -> str:
-    """Serve the lightweight web dashboard."""
-    page = ROOT / "app" / "static" / "index.html"
+    """Serve the GeoRescue AI web dashboard."""
+
+    page = (
+        ROOT
+        / "app"
+        / "static"
+        / "index.html"
+    )
 
     if not page.exists():
         raise HTTPException(
@@ -120,41 +196,169 @@ def index() -> str:
             detail="Dashboard file not found.",
         )
 
-    return page.read_text(encoding="utf-8")
+    return page.read_text(
+        encoding="utf-8"
+    )
+
+
+# ---------------------------------------------------------------------
+# BRIGHT demonstration metadata
+#
+# IMPORTANT:
+# This endpoint is intentionally defined BEFORE the StaticFiles mount.
+# ---------------------------------------------------------------------
+
+
+@app.get("/bright-demo/info")
+def bright_demo_info() -> dict[str, object]:
+    """Return metadata and image URLs for the BRIGHT demonstration."""
+
+    metadata_files = sorted(
+        BRIGHT_DEMO_DIR.glob(
+            "*_metadata.json"
+        )
+    )
+
+    if not metadata_files:
+        return {
+            "available": False,
+            "message": (
+                "No BRIGHT demo metadata found. "
+                "Run scripts/demo_bright.py first."
+            ),
+        }
+
+    # Use the first generated metadata file.
+    metadata_path = metadata_files[0]
+
+    try:
+        metadata = json.loads(
+            metadata_path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to read BRIGHT demo metadata.",
+        ) from exc
+
+    sample_id = str(
+        metadata.get(
+            "sample_id",
+            metadata_path.stem.replace(
+                "_metadata",
+                "",
+            ),
+        )
+    )
+
+    return {
+        "available": True,
+        "sample_id": sample_id,
+        "metadata": metadata,
+        "files": {
+            "optical": (
+                f"/bright-demo/"
+                f"{sample_id}_optical.png"
+            ),
+            "sar": (
+                f"/bright-demo/"
+                f"{sample_id}_sar.png"
+            ),
+            "target": (
+                f"/bright-demo/"
+                f"{sample_id}_target.png"
+            ),
+            "target_overlay": (
+                f"/bright-demo/"
+                f"{sample_id}_target_overlay.png"
+            ),
+            "prediction": (
+                f"/bright-demo/"
+                f"{sample_id}_prediction.png"
+            ),
+            "prediction_overlay": (
+                f"/bright-demo/"
+                f"{sample_id}_prediction_overlay.png"
+            ),
+        },
+    }
+
+
+# ---------------------------------------------------------------------
+# BRIGHT static demo files
+#
+# IMPORTANT:
+# This MUST come after /bright-demo/info.
+# ---------------------------------------------------------------------
+
+
+app.mount(
+    "/bright-demo",
+    StaticFiles(
+        directory=str(BRIGHT_DEMO_DIR)
+    ),
+    name="bright-demo",
+)
+
+
+# ---------------------------------------------------------------------
+# Image processing
+# ---------------------------------------------------------------------
 
 
 def _read_image(
     upload: UploadFile,
     channels: int,
 ) -> np.ndarray:
-    """Read and normalize an uploaded image into CHW float32 format."""
+    """Read uploaded imagery into CHW float32 format."""
+
     raw = upload.file.read()
 
     if not raw:
         raise HTTPException(
             status_code=400,
-            detail=f"Empty upload: {upload.filename}",
+            detail=(
+                f"Empty upload: "
+                f"{upload.filename}"
+            ),
         )
 
     try:
-        image = Image.open(io.BytesIO(raw))
+        image = Image.open(
+            io.BytesIO(raw)
+        )
 
         if channels == 3:
-            image = image.convert("RGB")
+            image = image.convert(
+                "RGB"
+            )
+
         elif channels == 1:
-            image = image.convert("L")
+            image = image.convert(
+                "L"
+            )
+
         else:
             raise ValueError(
-                f"Unsupported channel count: {channels}"
+                f"Unsupported channel count: "
+                f"{channels}"
             )
 
     except Exception as exc:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid image: {upload.filename}",
+            detail=(
+                f"Invalid image: "
+                f"{upload.filename}"
+            ),
         ) from exc
 
-    array = np.asarray(image).astype(
+    array = np.asarray(
+        image
+    ).astype(
         np.float32,
         copy=False,
     )
@@ -168,11 +372,23 @@ def _read_image(
             -1,
             0,
         )
+
     else:
         # HW -> CHW
-        array = array[None, ...]
+        array = array[
+            None,
+            ...
+        ]
 
-    return array
+    return np.ascontiguousarray(
+        array,
+        dtype=np.float32,
+    )
+
+
+# ---------------------------------------------------------------------
+# Prediction
+# ---------------------------------------------------------------------
 
 
 @app.post(
@@ -180,30 +396,41 @@ def _read_image(
     response_class=Response,
     responses={
         200: {
-            "description": "PNG damage segmentation mask.",
+            "description": (
+                "PNG damage segmentation mask."
+            ),
             "content": {
                 "image/png": {},
             },
         },
         400: {
-            "description": "Invalid or incompatible input images.",
+            "description": (
+                "Invalid or incompatible input images."
+            ),
         },
         503: {
-            "description": "Model is unavailable.",
+            "description": (
+                "Model is unavailable."
+            ),
         },
     },
 )
 async def predict(
     optical: UploadFile = File(
         ...,
-        description="Pre-disaster optical RGB image.",
+        description=(
+            "Pre-disaster optical RGB image."
+        ),
     ),
     sar: UploadFile = File(
         ...,
-        description="Post-disaster SAR image.",
+        description=(
+            "Post-disaster SAR image."
+        ),
     ),
 ) -> Response:
-    """Run multimodal segmentation and return a PNG damage mask."""
+    """Run multimodal segmentation inference."""
+
     if "model" not in _state:
         raise HTTPException(
             status_code=503,
@@ -227,12 +454,15 @@ async def predict(
         cfg.data.sar_channels,
     )
 
-    if optical_array.shape[1:] != sar_array.shape[1:]:
+    if (
+        optical_array.shape[1:]
+        != sar_array.shape[1:]
+    ):
         raise HTTPException(
             status_code=400,
             detail=(
-                "Optical and SAR images must have "
-                "identical spatial dimensions"
+                "Optical and SAR images must "
+                "have identical spatial dimensions."
             ),
         )
 
@@ -245,32 +475,48 @@ async def predict(
     ).to(device)
 
     with torch.inference_mode():
-        if hasattr(model, "optical_stem"):
+
+        if hasattr(
+            model,
+            "optical_stem",
+        ):
             logits = model(
                 optical_tensor,
                 sar_tensor,
             )
+
         elif getattr(
             model,
             "_is_sar_model",
             False,
         ):
-            logits = model(sar_tensor)
+            logits = model(
+                sar_tensor
+            )
+
         else:
-            logits = model(optical_tensor)
+            logits = model(
+                optical_tensor
+            )
 
         mask = (
             logits
-            .argmax(dim=1)[0]
+            .argmax(
+                dim=1
+            )[0]
             .cpu()
             .numpy()
-            .astype(np.uint8)
+            .astype(
+                np.uint8
+            )
         )
 
     buffer = io.BytesIO()
 
-    # Pillow infers grayscale mode from the uint8 2-D array.
-    Image.fromarray(mask).save(
+    Image.fromarray(
+        mask,
+        mode="L",
+    ).save(
         buffer,
         format="PNG",
     )
@@ -280,7 +526,8 @@ async def predict(
         media_type="image/png",
         headers={
             "Content-Disposition": (
-                'inline; filename="georescue_prediction.png"'
+                'inline; '
+                'filename="georescue_prediction.png"'
             )
         },
     )
