@@ -1,4 +1,3 @@
-
 <h1 align="center">GeoRescue AI</h1>
 
 <p align="center">
