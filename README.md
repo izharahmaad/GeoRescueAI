@@ -195,6 +195,7 @@ The exact preprocessing and augmentation logic lives in the repository rather th
 ---
 
 ## Dataset
+
 ### BRIGHT DFC25
 
 GeoRescue AI is built to work with the **BRIGHT DFC25** dataset.
