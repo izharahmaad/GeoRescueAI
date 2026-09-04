@@ -74,9 +74,9 @@ GeoRescue AI focuses on the last-mile workflow between a trained segmentation mo
                                 ▼
                  ┌─────────────────────────────┐
                  │ Dataset Discovery & Checks  │
-                 │ • file indexing              │
-                 │ • geometry validation        │
-                 │ • split validation           │
+                 │ • file indexing             │
+                 │ • geometry validation       │
+                 │ • split validation          │
                  └──────────────┬──────────────┘
                                 │
                                 ▼
@@ -100,7 +100,7 @@ GeoRescue AI focuses on the last-mile workflow between a trained segmentation mo
                     ┌──────────────────────┐
                     │    Fusion U-Net      │
                     │ Optical + SAR stems  │
-                    │ Shared encoder/decoder│
+                    │Shared encoder/decoder│
                     └──────────┬───────────┘
                                │
                                ▼
