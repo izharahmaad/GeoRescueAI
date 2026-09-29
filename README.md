@@ -21,7 +21,7 @@
 
 ## Overview
 
-**GeoRescue AI** is  computer-vision research and demonstration platform for identifying disaster-related damage from satellite imagery.
+**GeoRescue AI** is a computer-vision research and demonstration platform for identifying disaster-related damage from satellite imagery.
 
 The core idea is simple:
 
